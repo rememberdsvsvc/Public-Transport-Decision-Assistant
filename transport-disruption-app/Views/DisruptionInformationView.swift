@@ -5,1579 +5,503 @@
 
 import SwiftUI
 
-
 struct DisruptionInformationView: View {
-
     @Binding var journey: Journey
-
-    @State private var goToDecisionSupport =
-        false
-
-
-    // ========================================================
-    // MARK: - Body
-    // ========================================================
+    @State private var goToDecisionSupport = false
 
     var body: some View {
+        ZStack {
+            AppColor.pageBackground
+                .ignoresSafeArea()
 
-        ScrollView {
-
-            VStack(
-                alignment: .leading,
-                spacing: 24
-            ) {
-
-                // =================================================
-                // MARK: Page Header
-                // =================================================
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 8
-                ) {
-
-                    Text(
-                        "Disruption Information"
-                    )
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-
-
-                    Text(
-                        "Review what has happened and how it affects your current journey."
-                    )
-                    .foregroundStyle(.secondary)
-                }
-
-
-                // =================================================
-                // MARK: Current Journey
-                // =================================================
-
-                if let currentJourney =
-                    journey.selectedJourney {
-
-                    currentJourneyCard(
-                        currentJourney
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppSpacing.section) {
+                    PageHeader(
+                        title: "Disruption Information",
+                        subtitle: "Review what has happened, where the journey is affected, and what you can do next."
                     )
 
-
-                    // =================================================
-                    // MARK: What Happened
-                    // =================================================
-
-                    disruptionSummaryCard(
-                        currentJourney
-                    )
-
-
-                    // =================================================
-                    // MARK: Journey Impact
-                    // =================================================
-
-                    journeyImpactCard(
-                        currentJourney
-                    )
-
-
-                    // =================================================
-                    // MARK: Decision Support Button
-                    // =================================================
-
-                    Button {
-
-                        loadDecisionOptions(
-                            currentJourney:
-                                currentJourney
-                        )
-
-                    } label: {
-
-                        HStack {
-
-                            Spacer()
-
-
-                            Image(
-                                systemName:
-                                    "arrow.triangle.branch"
-                            )
-
-
-                            Text(
-                                "Compare My Options"
-                            )
-                            .fontWeight(.semibold)
-
-
-                            Image(
-                                systemName:
-                                    "arrow.right"
-                            )
-
-
-                            Spacer()
-                        }
-                        .padding(
-                            .vertical,
-                            5
+                    if let currentJourney = journey.selectedJourney {
+                        disruptionConclusion(currentJourney)
+                        journeyImpact(currentJourney)
+                        affectedSegments(currentJourney)
+                        completeJourney(currentJourney)
+                        comparisonAction(currentJourney)
+                    } else {
+                        EmptyStateView(
+                            title: "No Current Journey",
+                            message: "Return to the previous page and select your current journey first.",
+                            systemImage: "exclamationmark.circle"
                         )
                     }
-                    .buttonStyle(
-                        .borderedProminent
-                    )
-
-
-                } else {
-
-                    // =================================================
-                    // MARK: No Journey
-                    // =================================================
-
-                    noJourneyView
                 }
+                .appPageWidth()
+                .padding(.vertical, AppSpacing.extraLarge)
             }
-            .padding()
         }
-        .navigationTitle(
-            "Disruption"
-        )
-        .navigationBarTitleDisplayMode(
-            .inline
-        )
-        .navigationDestination(
-            isPresented:
-                $goToDecisionSupport
-        ) {
+        .fontDesign(.rounded)
+        .navigationDestination(isPresented: $goToDecisionSupport) {
+            DecisionSupportView(journey: $journey)
+        }
+    }
 
-            DecisionSupportView(
-                journey:
-                    $journey
+    // MARK: - Disruption Conclusion
+
+    @ViewBuilder
+    private func disruptionConclusion(_ option: JourneyOption) -> some View {
+        InformationNotice(
+            title: option.hasDisruption
+                ? disruptionHeadline(for: option)
+                : "No significant disruption is currently affecting this journey.",
+            message: option.hasDisruption
+                ? disruptionExplanation(for: option)
+                : journeyImpactMessage(for: option),
+            status: journeyStatus(for: option)
+        )
+    }
+
+    // MARK: - Overall Impact
+
+    @ViewBuilder
+    private func journeyImpact(_ option: JourneyOption) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            SectionHeader(
+                title: "Overall Impact",
+                subtitle: "Compare the original arrival with the latest expected outcome.",
+                systemImage: "clock.arrow.circlepath"
+            )
+
+            LazyVGrid(
+                columns: impactColumns,
+                alignment: .leading,
+                spacing: AppSpacing.large
+            ) {
+                MetricColumn(
+                    title: "Scheduled arrival",
+                    value: scheduledArrivalText(for: option),
+                    systemImage: "calendar"
+                )
+
+                MetricColumn(
+                    title: "Expected arrival",
+                    value: option.expectedArrival,
+                    systemImage: "clock"
+                )
+
+                MetricColumn(
+                    title: "Total journey delay",
+                    value: journeyDelayText(for: option),
+                    systemImage: journeyImpactIcon(for: option)
+                )
+            }
+
+            Divider()
+
+            Label(
+                journeyImpactMessage(for: option),
+                systemImage: journeyImpactIcon(for: option)
+            )
+            .font(AppTypography.supporting)
+            .foregroundStyle(journeyImpactColour(for: option))
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+        }
+        .appCard(background: impactSurface(for: option))
+    }
+
+    // MARK: - Affected Segments
+
+    @ViewBuilder
+    private func affectedSegments(_ option: JourneyOption) -> some View {
+        if option.hasDisruption {
+            JourneyTimeline(
+                title: "Affected Segments",
+                segments: disruptedSegments(in: option)
+                    .map(segmentPresentation)
+            )
+        } else {
+            InformationNotice(
+                title: "No Affected Segments",
+                message: "Every segment in the current journey is reporting normal service.",
+                status: .normal("All segments normal")
             )
         }
     }
 
-
-    // ========================================================
-    // MARK: - Current Journey Card
-    // ========================================================
+    // MARK: - Complete Journey Context
 
     @ViewBuilder
-    private func currentJourneyCard(
-        _ option: JourneyOption
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-
-            Label(
-                "Your Current Journey",
-                systemImage:
-                    "location.fill"
+    private func completeJourney(_ option: JourneyOption) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            SectionHeader(
+                title: "Full Journey Context",
+                subtitle: "All legs from \(option.origin) to \(option.destination), including unaffected connections.",
+                systemImage: "point.topleft.down.to.point.bottomright.curvepath"
             )
-            .font(.title2)
-            .fontWeight(.bold)
-
-
-            VStack(
-                alignment: .leading,
-                spacing: 6
-            ) {
-
-                Text(
-                    "\(option.origin) → \(option.destination)"
-                )
-                .font(.headline)
-
-
-                Text(
-                    option.transportModeText
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                Text(
-                    option.routeSummary
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-
-
-            Divider()
-
-
-            // -------------------------------------------------
-            // Overall Journey Information
-            // -------------------------------------------------
-
-            HStack(
-                alignment: .top,
-                spacing: 16
-            ) {
-
-                informationColumn(
-                    title:
-                        "Departure",
-
-                    value:
-                        scheduledDepartureText(
-                            for:
-                                option
-                        )
-                )
-
-
-                informationColumn(
-                    title:
-                        "Expected Arrival",
-
-                    value:
-                        option.expectedArrival
-                )
-            }
-
-
-            HStack(
-                alignment: .top,
-                spacing: 16
-            ) {
-
-                informationColumn(
-                    title:
-                        "Transfers",
-
-                    value:
-                        option.transferText
-                )
-
-
-                informationColumn(
-                    title:
-                        "Journey Time",
-
-                    value:
-                        "\(option.totalMinutes) min"
-                )
-            }
-
-
-            // -------------------------------------------------
-            // Complete Journey Segments
-            // -------------------------------------------------
-
-            Divider()
-
-
-            Text(
-                "Journey Details"
+            .padding(AppSpacing.large)
+            .background(AppColor.aliceBlue)
+            .clipShape(
+                RoundedRectangle(cornerRadius: AppCornerRadius.large)
             )
-            .font(.headline)
 
-
-            VStack(
-                alignment: .leading,
-                spacing: 0
-            ) {
-
-                ForEach(
-                    Array(
-                        option
-                            .orderedSegments
-                            .enumerated()
+            JourneySummary(
+                title: "Your Current Journey",
+                systemImage: option.firstSegment?.transportIcon
+                    ?? "location.fill",
+                route: option.routeSummary,
+                origin: option.origin,
+                destination: option.destination,
+                metrics: [
+                    JourneyMetric(
+                        title: "Departure",
+                        value: scheduledDepartureText(for: option),
+                        systemImage: "arrow.up.right"
                     ),
-                    id: \.element.id
-                ) {
-                    index,
-                    segment in
-
-
-                    journeySegmentRow(
-                        segment:
-                            segment
+                    JourneyMetric(
+                        title: "Expected arrival",
+                        value: option.expectedArrival,
+                        systemImage: "arrow.down.right"
+                    ),
+                    JourneyMetric(
+                        title: "Transfers",
+                        value: option.transferText,
+                        systemImage: "arrow.triangle.branch"
+                    ),
+                    JourneyMetric(
+                        title: "Journey time",
+                        value: "\(option.totalMinutes) min",
+                        systemImage: "clock"
                     )
+                ],
+                status: journeyStatus(for: option)
+            )
 
-
-                    if index <
-                        option.orderedSegments.count - 1 {
-
-                        connectionIndicator(
-                            from:
-                                segment,
-
-                            to:
-                                option.orderedSegments[
-                                    index + 1
-                                ]
-                        )
-                    }
-                }
-            }
+            JourneyTimeline(
+                title: "Complete Journey",
+                segments: option.orderedSegments
+                    .map(segmentPresentation)
+            )
         }
-        .padding()
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
     }
 
-
-    // ========================================================
-    // MARK: - Journey Segment Row
-    // ========================================================
+    // MARK: - Comparison Action
 
     @ViewBuilder
-    private func journeySegmentRow(
-        segment: JourneySegment
-    ) -> some View {
+    private func comparisonAction(_ option: JourneyOption) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            SectionHeader(
+                title: "Next Step",
+                subtitle: "Compare the available journeys before deciding how to continue."
+            )
 
-        HStack(
-            alignment: .top,
-            spacing: 14
-        ) {
-
-            // -------------------------------------------------
-            // Transport Icon
-            // -------------------------------------------------
-
-            ZStack {
-
-                Circle()
-                    .fill(
-                        segmentBackground(
-                            for:
-                                segment
-                        )
-                    )
-                    .frame(
-                        width: 42,
-                        height: 42
-                    )
-
-
-                Image(
-                    systemName:
-                        segment.transportIcon
-                )
-                .foregroundStyle(
-                    segmentForeground(
-                        for:
-                            segment
-                    )
-                )
-            }
-
-
-            // -------------------------------------------------
-            // Segment Details
-            // -------------------------------------------------
-
-            VStack(
-                alignment: .leading,
-                spacing: 5
+            PrimaryActionButton(
+                title: "Compare My Options",
+                systemImage: "arrow.triangle.branch"
             ) {
-
-                HStack {
-
-                    Text(
-                        segment.routeDisplayText
-                    )
-                    .font(.headline)
-
-
-                    Spacer()
-
-
-                    segmentStatusBadge(
-                        segment
-                    )
-                }
-
-
-                Text(
-                    "\(segment.origin) → \(segment.destination)"
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                HStack(
-                    spacing: 16
-                ) {
-
-                    Label(
-                        segment.departureText,
-                        systemImage:
-                            "arrow.up.right"
-                    )
-
-
-                    Label(
-                        segment.arrivalText,
-                        systemImage:
-                            "arrow.down.right"
-                    )
-                }
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                if segment.delayMinutes > 0 {
-
-                    Label(
-                        "\(segment.delayMinutes) min delay",
-                        systemImage:
-                            "clock.badge.exclamationmark"
-                    )
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(
-                        .orange
-                    )
-                }
-
-
-                if segment.isCancelled {
-
-                    Label(
-                        "This service is unavailable",
-                        systemImage:
-                            "xmark.circle.fill"
-                    )
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(
-                        .red
-                    )
-                }
+                loadDecisionOptions(currentJourney: option)
             }
+            .tint(AppColor.ink)
         }
-        .padding(
-            .vertical,
-            8
-        )
-    }
-
-
-    // ========================================================
-    // MARK: - Connection Indicator
-    // ========================================================
-
-    @ViewBuilder
-    private func connectionIndicator(
-        from currentSegment: JourneySegment,
-        to nextSegment: JourneySegment
-    ) -> some View {
-
-        HStack(
-            spacing: 12
-        ) {
-
-            Rectangle()
-                .fill(
-                    Color.secondary.opacity(
-                        0.3
-                    )
-                )
-                .frame(
-                    width: 2,
-                    height: 28
-                )
-                .padding(
-                    .leading,
-                    20
-                )
-
-
-            if !currentSegment.isWalking &&
-                !nextSegment.isWalking {
-
-                Label(
-                    "Transfer",
-                    systemImage:
-                        "arrow.triangle.swap"
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-
-            } else {
-
-                Text(
-                    "Continue"
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-
-
-            Spacer()
-        }
-    }
-
-
-    // ========================================================
-    // MARK: - Disruption Summary
-    // ========================================================
-
-    @ViewBuilder
-    private func disruptionSummaryCard(
-        _ option: JourneyOption
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-
-            Label(
-                "What Happened?",
-                systemImage:
-                    option.hasDisruption
-                    ? "exclamationmark.triangle.fill"
-                    : "checkmark.circle.fill"
-            )
-            .font(.title2)
-            .fontWeight(.bold)
-            .foregroundStyle(
-                option.hasDisruption
-                ? .orange
-                : .green
-            )
-
-
-            if option.hasDisruption {
-
-                Text(
-                    disruptionHeadline(
-                        for:
-                            option
-                    )
-                )
-                .font(.headline)
-
-
-                Text(
-                    disruptionExplanation(
-                        for:
-                            option
-                    )
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                Divider()
-
-
-                // -------------------------------------------------
-                // Only show affected segments
-                // -------------------------------------------------
-
-                Text(
-                    "Affected Service"
-                )
-                .font(.headline)
-
-
-                ForEach(
-                    disruptedSegments(
-                        in:
-                            option
-                    )
-                ) {
-                    segment in
-
-
-                    affectedSegmentRow(
-                        segment
-                    )
-                }
-
-            } else {
-
-                Text(
-                    "No significant disruption is currently affecting this journey."
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-        }
-        .padding()
-        .background(
-            disruptionBackground(
-                for:
-                    option
-            )
-        )
+        .padding(AppSpacing.large)
+        .background(AppColor.vanilla)
         .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
+            RoundedRectangle(cornerRadius: AppCornerRadius.large)
         )
     }
 
+    // MARK: - Presentation Mapping
 
-    // ========================================================
-    // MARK: - Affected Segment Row
-    // ========================================================
+    private var impactColumns: [GridItem] {
+        [
+            GridItem(
+                .adaptive(minimum: 140),
+                spacing: AppSpacing.large,
+                alignment: .top
+            )
+        ]
+    }
 
-    @ViewBuilder
-    private func affectedSegmentRow(
+    private func segmentPresentation(
         _ segment: JourneySegment
-    ) -> some View {
-
-        HStack(
-            alignment: .top,
-            spacing: 12
-        ) {
-
-            Image(
-                systemName:
-                    segment.transportIcon
-            )
-            .frame(
-                width: 26
-            )
-
-
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-
-                Text(
-                    segment.routeDisplayText
-                )
-                .fontWeight(.semibold)
-
-
-                Text(
-                    "\(segment.origin) → \(segment.destination)"
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                if segment.isCancelled {
-
-                    Text(
-                        "Cancelled"
-                    )
-                    .font(.subheadline)
-                    .fontWeight(.bold)
-                    .foregroundStyle(
-                        .red
-                    )
-
-                } else if segment.delayMinutes > 0 {
-
-                    Text(
-                        "\(segment.disruptionType) • \(segment.delayMinutes) min delay"
-                    )
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(
-                        .orange
-                    )
-
-                } else {
-
-                    Text(
-                        segment.disruptionType
-                    )
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(
-                        .orange
-                    )
-                }
-            }
-
-
-            Spacer()
-        }
-        .padding()
-        .background(
-            Color(
-                .systemBackground
-            )
-            .opacity(
-                0.7
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 12
-            )
+    ) -> JourneySegmentPresentation {
+        JourneySegmentPresentation(
+            systemImage: segment.transportIcon,
+            route: segment.routeDisplayText,
+            origin: segment.origin,
+            destination: segment.destination,
+            departure: segment.departureText,
+            arrival: segment.arrivalText,
+            status: segmentStatus(for: segment)
         )
     }
 
+    private func segmentStatus(
+        for segment: JourneySegment
+    ) -> PresentationStatus {
+        if segment.isCancelled {
+            return .cancelled()
+        }
 
-    // ========================================================
-    // MARK: - Journey Impact Card
-    // ========================================================
-
-    @ViewBuilder
-    private func journeyImpactCard(
-        _ option: JourneyOption
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-
-            Label(
-                "How Does This Affect Your Journey?",
-                systemImage:
-                    "clock.arrow.circlepath"
-            )
-            .font(.title2)
-            .fontWeight(.bold)
-
-
-            // -------------------------------------------------
-            // Arrival Comparison
-            // -------------------------------------------------
-
-            HStack(
-                alignment: .top,
-                spacing: 16
-            ) {
-
-                informationColumn(
-                    title:
-                        "Scheduled Arrival",
-
-                    value:
-                        scheduledArrivalText(
-                            for:
-                                option
-                        )
-                )
-
-
-                informationColumn(
-                    title:
-                        "Expected Arrival",
-
-                    value:
-                        option.expectedArrival
-                )
-            }
-
-
-            Divider()
-
-
-            // -------------------------------------------------
-            // Delay Impact
-            // -------------------------------------------------
-
-            HStack {
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 5
-                ) {
-
-                    Text(
-                        "Total Journey Delay"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-
-
-                    Text(
-                        journeyDelayText(
-                            for:
-                                option
-                        )
-                    )
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundStyle(
-                        journeyImpactColour(
-                            for:
-                                option
-                        )
-                    )
-                }
-
-
-                Spacer()
-
-
-                Image(
-                    systemName:
-                        journeyImpactIcon(
-                            for:
-                                option
-                        )
-                )
-                .font(
-                    .system(
-                        size: 30
-                    )
-                )
-                .foregroundStyle(
-                    journeyImpactColour(
-                        for:
-                            option
-                    )
-                )
-            }
-
-
-            // -------------------------------------------------
-            // Impact Message
-            // -------------------------------------------------
-
-            Text(
-                journeyImpactMessage(
-                    for:
-                        option
-                )
-            )
-            .font(.subheadline)
-            .foregroundStyle(
-                .secondary
+        if segment.delayMinutes > 0 {
+            return .delayed(
+                "\(segment.disruptionType) • \(segment.delayMinutes) min delay"
             )
         }
-        .padding()
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
+
+        if segment.disruptionType != "Normal Service" {
+            return .delayed(segment.disruptionType)
+        }
+
+        return .normal("Normal service")
     }
 
+    private func journeyStatus(
+        for option: JourneyOption
+    ) -> PresentationStatus {
+        if option.isCancelled {
+            return .cancelled("Journey unavailable")
+        }
 
-    // ========================================================
+        if option.hasDisruption {
+            return .delayed(journeyDelayText(for: option))
+        }
+
+        return .normal("On time")
+    }
+
+    private func impactSurface(for option: JourneyOption) -> Color {
+        if option.isCancelled {
+            return AppColor.critical.opacity(0.13)
+        }
+
+        if option.hasDisruption {
+            return AppColor.warning.opacity(0.14)
+        }
+
+        return AppColor.honeydew
+    }
+
     // MARK: - Load Decision Options
-    // ========================================================
 
     private func loadDecisionOptions(
         currentJourney: JourneyOption
     ) {
-
         let options =
             DatabaseManager
                 .shared
                 .findDecisionOptions(
-
-                    currentJourney:
-                        currentJourney,
-
-                    selectedTime:
-                        journey.selectedTime
+                    currentJourney: currentJourney,
+                    selectedTime: journey.selectedTime
                 )
 
-
-        journey.setAlternativeOptions(
-            options
-        )
-
-
-        goToDecisionSupport =
-            true
+        journey.setAlternativeOptions(options)
+        goToDecisionSupport = true
     }
 
-
-    // ========================================================
     // MARK: - Disrupted Segments
-    // ========================================================
 
     private func disruptedSegments(
         in option: JourneyOption
     ) -> [JourneySegment] {
-
         option
             .orderedSegments
             .filter {
-
                 $0.isCancelled
-                ||
-                $0.delayMinutes > 0
-                ||
-                $0.disruptionType !=
-                    "Normal Service"
+                || $0.delayMinutes > 0
+                || $0.disruptionType != "Normal Service"
             }
     }
 
-
-    // ========================================================
     // MARK: - Disruption Text
-    // ========================================================
 
     private func disruptionHeadline(
         for option: JourneyOption
     ) -> String {
-
         let affected =
-            disruptedSegments(
-                in:
-                    option
-            )
+            disruptedSegments(in: option)
 
-
-        if affected.contains(
-            where: {
-                $0.isCancelled
-            }
-        ) {
-
-            return
-                "Part of your journey has been cancelled."
+        if affected.contains(where: { $0.isCancelled }) {
+            return "Part of your journey has been cancelled."
         }
-
 
         if affected.count == 1 {
-
-            return
-                "A service in your journey is disrupted."
+            return "A service in your journey is disrupted."
         }
 
-
-        return
-            "\(affected.count) parts of your journey are affected."
+        return "\(affected.count) parts of your journey are affected."
     }
-
 
     private func disruptionExplanation(
         for option: JourneyOption
     ) -> String {
-
         let affected =
-            disruptedSegments(
-                in:
-                    option
-            )
+            disruptedSegments(in: option)
 
-
-        if affected.contains(
-            where: {
-                $0.isCancelled
-            }
-        ) {
-
-            return
-                "Your current journey can no longer be completed as originally planned. Compare the available alternatives before continuing."
+        if affected.contains(where: { $0.isCancelled }) {
+            return "Your current journey can no longer be completed as originally planned. Compare the available alternatives before continuing."
         }
-
 
         if option.totalDelayMinutes > 0 {
-
-            return
-                "Your journey is still available, but disruption is expected to affect your arrival time."
+            return "Your journey is still available, but disruption is expected to affect your arrival time."
         }
 
-
-        return
-            "Service conditions have changed on part of your journey. Review the affected service before deciding whether to continue."
+        return "Service conditions have changed on part of your journey. Review the affected service before deciding whether to continue."
     }
 
-
-    // ========================================================
     // MARK: - Journey Timing
-    // ========================================================
 
     private func scheduledDepartureText(
         for option: JourneyOption
     ) -> String {
-
         guard let first =
                 option.orderedSegments.first
         else {
-
-            return
-                option.expectedDeparture
+            return option.expectedDeparture
         }
 
-
         return first.scheduledDeparture
-            ??
-            first.expectedDeparture
-            ??
-            option.expectedDeparture
+            ?? first.expectedDeparture
+            ?? option.expectedDeparture
     }
-
 
     private func scheduledArrivalText(
         for option: JourneyOption
     ) -> String {
-
         guard let last =
                 option.orderedSegments.last
         else {
-
-            return
-                option.expectedArrival
+            return option.expectedArrival
         }
 
-
         return last.scheduledArrival
-            ??
-            last.expectedArrival
-            ??
-            option.expectedArrival
+            ?? last.expectedArrival
+            ?? option.expectedArrival
     }
-
 
     private func calculatedArrivalDelay(
         for option: JourneyOption
     ) -> Int {
-
         let scheduled =
-            scheduledArrivalText(
-                for:
-                    option
-            )
-
-
+            scheduledArrivalText(for: option)
         let expected =
             option.expectedArrival
-
-
         let scheduledMinutes =
-            minutesFromTimeString(
-                scheduled
-            )
-
-
+            minutesFromTimeString(scheduled)
         let expectedMinutes =
-            minutesFromTimeString(
-                expected
-            )
-
+            minutesFromTimeString(expected)
 
         guard
             scheduledMinutes >= 0,
             expectedMinutes >= 0
         else {
-
-            return
-                option.totalDelayMinutes
+            return option.totalDelayMinutes
         }
 
-
-        if expectedMinutes >=
-            scheduledMinutes {
-
-            return expectedMinutes -
-                scheduledMinutes
+        if expectedMinutes >= scheduledMinutes {
+            return expectedMinutes - scheduledMinutes
         }
 
-
-        return (
-            1440 -
-            scheduledMinutes
-        ) + expectedMinutes
+        return (1440 - scheduledMinutes) + expectedMinutes
     }
-
 
     private func journeyDelayText(
         for option: JourneyOption
     ) -> String {
-
         if option.isCancelled {
-
-            return
-                "Journey unavailable"
+            return "Journey unavailable"
         }
-
 
         let delay =
-            calculatedArrivalDelay(
-                for:
-                    option
-            )
-
+            calculatedArrivalDelay(for: option)
 
         if delay <= 0 {
-
-            return
-                "No arrival delay"
+            return "No arrival delay"
         }
 
-
-        return
-            "+\(delay) min"
+        return "+\(delay) min"
     }
 
-
-    // ========================================================
     // MARK: - Journey Impact
-    // ========================================================
 
     private func journeyImpactMessage(
         for option: JourneyOption
     ) -> String {
-
         if option.isCancelled {
-
-            return
-                "At least one required service is cancelled, so this journey is no longer available as originally planned."
+            return "At least one required service is cancelled, so this journey is no longer available as originally planned."
         }
-
 
         let delay =
-            calculatedArrivalDelay(
-                for:
-                    option
-            )
-
+            calculatedArrivalDelay(for: option)
 
         if delay <= 0 {
-
-            return
-                "Your expected arrival time is currently close to the original schedule."
+            return "Your expected arrival time is currently close to the original schedule."
         }
-
 
         if delay <= 5 {
-
-            return
-                "The disruption has a small impact on your expected arrival time."
+            return "The disruption has a small impact on your expected arrival time."
         }
-
 
         if delay <= 15 {
-
-            return
-                "The disruption causes a noticeable delay. Comparing alternatives may help you decide whether to continue."
+            return "The disruption causes a noticeable delay. Comparing alternatives may help you decide whether to continue."
         }
 
-
-        return
-            "The disruption has a substantial impact on your journey. Consider the available alternatives before continuing."
+        return "The disruption has a substantial impact on your journey. Consider the available alternatives before continuing."
     }
-
 
     private func journeyImpactColour(
         for option: JourneyOption
     ) -> Color {
-
         if option.isCancelled {
-
-            return
-                .red
+            return AppColor.critical
         }
-
 
         let delay =
-            calculatedArrivalDelay(
-                for:
-                    option
-            )
-
+            calculatedArrivalDelay(for: option)
 
         if delay <= 0 {
-
-            return
-                .green
+            return AppColor.success
         }
-
 
         if delay <= 15 {
-
-            return
-                .orange
+            return AppColor.warning
         }
 
-
-        return
-            .red
+        return AppColor.critical
     }
-
 
     private func journeyImpactIcon(
         for option: JourneyOption
     ) -> String {
-
         if option.isCancelled {
-
-            return
-                "xmark.circle.fill"
+            return "xmark.circle.fill"
         }
-
 
         let delay =
-            calculatedArrivalDelay(
-                for:
-                    option
-            )
-
+            calculatedArrivalDelay(for: option)
 
         if delay <= 0 {
-
-            return
-                "checkmark.circle.fill"
+            return "checkmark.circle.fill"
         }
 
-
-        return
-            "exclamationmark.triangle.fill"
+        return "exclamationmark.triangle.fill"
     }
 
-
-    // ========================================================
-    // MARK: - Segment Appearance
-    // ========================================================
-
-    private func segmentBackground(
-        for segment: JourneySegment
-    ) -> Color {
-
-        if segment.isCancelled {
-
-            return
-                Color.red.opacity(
-                    0.12
-                )
-        }
-
-
-        if segment.delayMinutes > 0 ||
-            segment.disruptionType !=
-                "Normal Service" {
-
-            return
-                Color.orange.opacity(
-                    0.12
-                )
-        }
-
-
-        return
-            Color.blue.opacity(
-                0.10
-            )
-    }
-
-
-    private func segmentForeground(
-        for segment: JourneySegment
-    ) -> Color {
-
-        if segment.isCancelled {
-
-            return
-                .red
-        }
-
-
-        if segment.delayMinutes > 0 ||
-            segment.disruptionType !=
-                "Normal Service" {
-
-            return
-                .orange
-        }
-
-
-        return
-            .blue
-    }
-
-
-    // ========================================================
-    // MARK: - Segment Status Badge
-    // ========================================================
-
-    @ViewBuilder
-    private func segmentStatusBadge(
-        _ segment: JourneySegment
-    ) -> some View {
-
-        if segment.isCancelled {
-
-            Text(
-                "Cancelled"
-            )
-            .font(.caption2)
-            .fontWeight(.bold)
-            .foregroundStyle(
-                .red
-            )
-            .padding(
-                .horizontal,
-                8
-            )
-            .padding(
-                .vertical,
-                4
-            )
-            .background(
-                Color.red.opacity(
-                    0.10
-                )
-            )
-            .clipShape(
-                Capsule()
-            )
-
-        } else if segment.delayMinutes > 0 ||
-                    segment.disruptionType !=
-                        "Normal Service" {
-
-            Text(
-                segment.delayMinutes > 0
-                ? "+\(segment.delayMinutes) min"
-                : segment.disruptionType
-            )
-            .font(.caption2)
-            .fontWeight(.bold)
-            .foregroundStyle(
-                .orange
-            )
-            .padding(
-                .horizontal,
-                8
-            )
-            .padding(
-                .vertical,
-                4
-            )
-            .background(
-                Color.orange.opacity(
-                    0.10
-                )
-            )
-            .clipShape(
-                Capsule()
-            )
-
-        } else {
-
-            Text(
-                "Normal"
-            )
-            .font(.caption2)
-            .fontWeight(.semibold)
-            .foregroundStyle(
-                .green
-            )
-            .padding(
-                .horizontal,
-                8
-            )
-            .padding(
-                .vertical,
-                4
-            )
-            .background(
-                Color.green.opacity(
-                    0.10
-                )
-            )
-            .clipShape(
-                Capsule()
-            )
-        }
-    }
-
-
-    // ========================================================
-    // MARK: - Information Column
-    // ========================================================
-
-    @ViewBuilder
-    private func informationColumn(
-        title: String,
-        value: String
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 4
-        ) {
-
-            Text(
-                title
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-
-
-            Text(
-                value
-            )
-            .font(.headline)
-        }
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
-        )
-    }
-
-
-    // ========================================================
     // MARK: - Time Helper
-    // ========================================================
 
     private func minutesFromTimeString(
         _ time: String
     ) -> Int {
-
         let components =
-            time.split(
-                separator: ":"
-            )
-
+            time.split(separator: ":")
 
         guard
             components.count >= 2,
-
-            let hour =
-                Int(
-                    components[0]
-                ),
-
-            let minute =
-                Int(
-                    components[1]
-                )
-
+            let hour = Int(components[0]),
+            let minute = Int(components[1])
         else {
-
             return -1
         }
 
-
-        return hour * 60 +
-            minute
-    }
-
-
-    // ========================================================
-    // MARK: - Disruption Background
-    // ========================================================
-
-    private func disruptionBackground(
-        for option: JourneyOption
-    ) -> Color {
-
-        if option.isCancelled {
-
-            return
-                Color.red.opacity(
-                    0.07
-                )
-        }
-
-
-        if option.hasDisruption {
-
-            return
-                Color.orange.opacity(
-                    0.07
-                )
-        }
-
-
-        return
-            Color.green.opacity(
-                0.07
-            )
-    }
-
-
-    // ========================================================
-    // MARK: - No Journey
-    // ========================================================
-
-    private var noJourneyView:
-        some View {
-
-        VStack(
-            spacing: 14
-        ) {
-
-            Image(
-                systemName:
-                    "exclamationmark.circle"
-            )
-            .font(
-                .system(
-                    size: 42
-                )
-            )
-            .foregroundStyle(
-                .secondary
-            )
-
-
-            Text(
-                "No Current Journey"
-            )
-            .font(.headline)
-
-
-            Text(
-                "Return to the previous page and select your current journey first."
-            )
-            .font(.subheadline)
-            .foregroundStyle(
-                .secondary
-            )
-            .multilineTextAlignment(
-                .center
-            )
-        }
-        .frame(
-            maxWidth: .infinity
-        )
-        .padding(
-            .vertical,
-            36
-        )
-        .padding()
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
+        return hour * 60 + minute
     }
 }

@@ -5,1273 +5,344 @@
 
 import SwiftUI
 
-
 struct DecisionSupportView: View {
-
     @Binding var journey: Journey
+    @State private var goToEvaluation = false
 
-    @State private var goToEvaluation =
-        false
-
-
-    // ========================================================
-    // MARK: - Body
-    // ========================================================
+    private let metricColumns = [
+        GridItem(
+            .adaptive(minimum: 128),
+            spacing: AppSpacing.large,
+            alignment: .top
+        )
+    ]
 
     var body: some View {
-
         ScrollView {
+            VStack(alignment: .leading, spacing: AppSpacing.section) {
+                PageHeader(
+                    title: "Decision Support",
+                    subtitle: "Compare your current journey with available alternatives before deciding what to do next."
+                )
 
-            VStack(
-                alignment: .leading,
-                spacing: 24
-            ) {
-
-                // =================================================
-                // MARK: Page Header
-                // =================================================
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 8
-                ) {
-
-                    Text(
-                        "Decision Support"
-                    )
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-
-
-                    Text(
-                        "Compare your current journey with available alternatives before deciding what to do next."
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                if let currentJourney = journey.selectedJourney {
+                    currentSituation(currentJourney)
                 }
 
-
-                // =================================================
-                // MARK: Current Situation
-                // =================================================
-
-                if let currentJourney =
-                    journey.selectedJourney {
-
-                    currentSituationCard(
-                        currentJourney
-                    )
-                }
-
-
-                // =================================================
-                // MARK: Comparison Explanation
-                // =================================================
-
-                comparisonExplanation
-
-
-                // =================================================
-                // MARK: Options
-                // =================================================
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 16
-                ) {
-
-                    Text(
-                        "Available Options"
-                    )
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-
-                    Text(
-                        "Options are ordered by expected arrival time, transfers, disruption delay and total journey time."
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(
-                        .secondary
-                    )
-
-
-                    if displayedOptions.isEmpty {
-
-                        noOptionsView
-
-                    } else {
-
-                        ForEach(
-                            Array(
-                                displayedOptions.enumerated()
-                            ),
-                            id: \.element.id
-                        ) {
-                            index,
-                            option in
-
-
-                            decisionOptionCard(
-                                option:
-                                    option,
-
-                                rank:
-                                    index
-                            )
-                        }
-                    }
-                }
-
-
-                // =================================================
-                // MARK: Selection Summary
-                // =================================================
-
-                if let selected =
-                    journey.selectedOption {
-
-                    selectedJourneyCard(
-                        selected
-                    )
-                }
-
-
-                // =================================================
-                // MARK: Confirm
-                // =================================================
-
-                if journey.selectedOption != nil {
-
-                    Button {
-
-                        goToEvaluation =
-                            true
-
-                    } label: {
-
-                        HStack {
-
-                            Spacer()
-
-
-                            Text(
-                                "Confirm My Choice"
-                            )
-                            .fontWeight(
-                                .semibold
-                            )
-
-
-                            Image(
-                                systemName:
-                                    "arrow.right"
-                            )
-
-
-                            Spacer()
-                        }
-                        .padding(
-                            .vertical,
-                            5
-                        )
-                    }
-                    .buttonStyle(
-                        .borderedProminent
-                    )
-                }
-            }
-            .padding()
-        }
-        .navigationTitle(
-            "Decision"
-        )
-        .navigationBarTitleDisplayMode(
-            .inline
-        )
-        .navigationDestination(
-            isPresented:
-                $goToEvaluation
-        ) {
-
-            EvaluationView(
-                journey:
-                    $journey
-            )
-        }
-    }
-
-
-    // ========================================================
-    // MARK: - Displayed Options
-    // ========================================================
-
-    private var displayedOptions:
-        [JourneyOption] {
-
-        /*
-         DatabaseManager already ranks and limits the results.
-
-         prefix(5) is kept here as an additional UI safeguard.
-         */
-
-        Array(
-            journey
-                .alternativeOptions
-                .prefix(5)
-        )
-    }
-
-
-    // ========================================================
-    // MARK: - Current Situation
-    // ========================================================
-
-    @ViewBuilder
-    private func currentSituationCard(
-        _ currentJourney: JourneyOption
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 16
-        ) {
-
-            Label(
-                "Current Situation",
-                systemImage:
-                    "location.circle.fill"
-            )
-            .font(.title2)
-            .fontWeight(.bold)
-
-
-            VStack(
-                alignment: .leading,
-                spacing: 6
-            ) {
-
-                Text(
-                    "\(currentJourney.origin) → \(currentJourney.destination)"
-                )
-                .font(.headline)
-
-
-                Text(
-                    currentJourney.routeSummary
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
+                InformationNotice(
+                    title: "How options are compared",
+                    message: "Options are ordered by expected arrival time, transfers, disruption delay and total journey time."
                 )
 
+                optionsSection
 
-                Text(
-                    currentJourney.transportModeText
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
+                if let selectedOption = journey.selectedOption {
+                    selectionSummary(selectedOption)
 
-
-            Divider()
-
-
-            HStack(
-                alignment: .top,
-                spacing: 16
-            ) {
-
-                informationColumn(
-                    title:
-                        "Departure",
-
-                    value:
-                        scheduledDepartureText(
-                            for:
-                                currentJourney
-                        )
-                )
-
-
-                informationColumn(
-                    title:
-                        "Expected Arrival",
-
-                    value:
-                        currentJourney.expectedArrival
-                )
-            }
-
-
-            HStack(
-                alignment: .top,
-                spacing: 16
-            ) {
-
-                informationColumn(
-                    title:
-                        "Transfers",
-
-                    value:
-                        currentJourney.transferText
-                )
-
-
-                informationColumn(
-                    title:
-                        "Delay",
-
-                    value:
-                        currentJourney.delayText
-                )
-            }
-
-
-            Divider()
-
-
-            if currentJourney.isCancelled {
-
-                HStack(
-                    alignment: .top,
-                    spacing: 10
-                ) {
-
-                    Image(
-                        systemName:
-                            "xmark.circle.fill"
-                    )
-                    .foregroundStyle(
-                        .red
-                    )
-
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 4
+                    PrimaryActionButton(
+                        title: "Confirm My Choice",
+                        systemImage: "checkmark.circle.fill"
                     ) {
-
-                        Text(
-                            "Current Journey Unavailable"
-                        )
-                        .fontWeight(
-                            .semibold
-                        )
-                        .foregroundStyle(
-                            .red
-                        )
-
-
-                        Text(
-                            "At least one required service has been cancelled. Your current journey remains visible for comparison but cannot be selected."
-                        )
-                        .font(.subheadline)
-                        .foregroundStyle(
-                            .secondary
-                        )
+                        goToEvaluation = true
                     }
                 }
-
-            } else if currentJourney.hasDisruption {
-
-                HStack(
-                    alignment: .top,
-                    spacing: 10
-                ) {
-
-                    Image(
-                        systemName:
-                            "exclamationmark.triangle.fill"
-                    )
-                    .foregroundStyle(
-                        .orange
-                    )
-
-
-                    Text(
-                        "Your current journey is still available, but disruption may affect your arrival time."
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-
-            } else {
-
-                HStack(
-                    spacing: 10
-                ) {
-
-                    Image(
-                        systemName:
-                            "checkmark.circle.fill"
-                    )
-                    .foregroundStyle(
-                        .green
-                    )
-
-
-                    Text(
-                        "Your current journey is still operating without a significant disruption."
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
             }
+            .appPageWidth()
+            .padding(.vertical, AppSpacing.extraLarge)
         }
-        .padding()
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
+        .background(AppColor.pageBackground.ignoresSafeArea())
+        .navigationDestination(isPresented: $goToEvaluation) {
+            EvaluationView(journey: $journey)
+        }
     }
 
-
-    // ========================================================
-    // MARK: - Comparison Explanation
-    // ========================================================
-
-    private var comparisonExplanation:
-        some View {
-
-        HStack(
-            alignment: .top,
-            spacing: 12
-        ) {
-
-            Image(
-                systemName:
-                    "info.circle.fill"
-            )
-            .foregroundStyle(
-                .blue
-            )
-
-
-            VStack(
-                alignment: .leading,
-                spacing: 5
-            ) {
-
-                Text(
-                    "Compare Before You Decide"
-                )
-                .fontWeight(
-                    .semibold
-                )
-
-
-                Text(
-                    "The first option is highlighted as a recommended option based on the current journey information. You can still choose any available option."
-                )
-                .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-        }
-        .padding()
-        .background(
-            Color.blue.opacity(
-                0.06
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 14
-            )
-        )
+    private var displayedOptions: [JourneyOption] {
+        Array(journey.alternativeOptions.prefix(5))
     }
-
-
-    // ========================================================
-    // MARK: - Decision Option Card
-    // ========================================================
 
     @ViewBuilder
+    private var optionsSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            SectionHeader(
+                title: "Available Options",
+                subtitle: "Select the journey that best fits your priorities.",
+                systemImage: "arrow.triangle.branch"
+            )
+
+            if displayedOptions.isEmpty {
+                EmptyStateView(
+                    title: "No Available Options",
+                    message: "No suitable journeys are currently available for comparison.",
+                    systemImage: "exclamationmark.triangle"
+                )
+            } else {
+                ForEach(Array(displayedOptions.enumerated()), id: \.element.id) { index, option in
+                    decisionOptionCard(option: option, rank: index)
+                }
+            }
+        }
+    }
+
+    private func currentSituation(_ option: JourneyOption) -> some View {
+        JourneySummary(
+            title: "Current situation",
+            systemImage: mainTransportIcon(for: option),
+            route: option.routeSummary,
+            origin: option.origin,
+            destination: option.destination,
+            metrics: comparisonMetrics(for: option),
+            status: serviceStatus(for: option)
+        )
+    }
+
     private func decisionOptionCard(
         option: JourneyOption,
         rank: Int
     ) -> some View {
+        let isSelected = journey.selectedOption?.id == option.id
+        let isCurrent = journey.isCurrentJourney(option)
 
-        let isSelected =
-            journey.selectedOption?.id ==
-            option.id
-
-
-        let isCurrent =
-            journey.isCurrentJourney(
-                option
-            )
-
-
-        Button {
-
-            journey.toggleOption(
-                option
-            )
-
+        return Button {
+            journey.toggleOption(option)
         } label: {
+            VStack(alignment: .leading, spacing: AppSpacing.large) {
+                optionStateLabels(
+                    rank: rank,
+                    isCurrent: isCurrent,
+                    isSelected: isSelected
+                )
 
-            VStack(
-                alignment: .leading,
-                spacing: 14
-            ) {
-
-                // -------------------------------------------------
-                // Labels
-                // -------------------------------------------------
-
-                HStack(
-                    spacing: 8
-                ) {
-
-                    if rank == 0 {
-
-                        badge(
-                            text:
-                                "Recommended Option",
-
-                            icon:
-                                "star.fill",
-
-                            colour:
-                                .blue
-                        )
-                    }
-
-
-                    if isCurrent {
-
-                        badge(
-                            text:
-                                "Current Journey",
-
-                            icon:
-                                "location.fill",
-
-                            colour:
-                                .orange
-                        )
-                    }
-
-
-                    Spacer()
-
-
-                    Image(
-                        systemName:
-                            isSelected
-                            ? "checkmark.circle.fill"
-                            : "circle"
-                    )
-                    .font(.title3)
-                    .foregroundStyle(
-                        isSelected
-                        ? Color.accentColor
-                        : .secondary
-                    )
-                }
-
-
-                // -------------------------------------------------
-                // Journey Name
-                // -------------------------------------------------
-
-                HStack(
-                    alignment: .top,
-                    spacing: 12
-                ) {
-
-                    Image(
-                        systemName:
-                            mainTransportIcon(
-                                for:
-                                    option
-                            )
-                    )
-                    .font(.title2)
-                    .frame(
-                        width: 32
-                    )
-
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 5
-                    ) {
-
-                        Text(
-                            option.transportModeText
-                        )
-                        .font(.headline)
-
-
-                        Text(
-                            option.routeSummary
-                        )
-                        .font(.subheadline)
-                        .foregroundStyle(
-                            .secondary
-                        )
-
-
-                        Text(
-                            "\(option.origin) → \(option.destination)"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(
-                            .secondary
-                        )
-                    }
-
-
-                    Spacer()
-                }
-
+                routeIdentity(option)
 
                 Divider()
 
-
-                // -------------------------------------------------
-                // Key Comparison Information
-                // -------------------------------------------------
-
-                HStack(
-                    alignment: .top,
-                    spacing: 16
+                LazyVGrid(
+                    columns: metricColumns,
+                    alignment: .leading,
+                    spacing: AppSpacing.large
                 ) {
-
-                    informationColumn(
-                        title:
-                            "Departure",
-
-                        value:
-                            departureText(
-                                for:
-                                    option
-                            )
-                    )
-
-
-                    informationColumn(
-                        title:
-                            "Expected Arrival",
-
-                        value:
-                            option.expectedArrival
-                    )
-                }
-
-
-                HStack(
-                    alignment: .top,
-                    spacing: 16
-                ) {
-
-                    informationColumn(
-                        title:
-                            "Transfers",
-
-                        value:
-                            option.transferText
-                    )
-
-
-                    informationColumn(
-                        title:
-                            "Duration",
-
-                        value:
-                            "\(option.totalMinutes) min"
-                    )
-                }
-
-
-                HStack(
-                    alignment: .top,
-                    spacing: 16
-                ) {
-
-                    informationColumn(
-                        title:
-                            "Delay",
-
-                        value:
-                            option.delayText
-                    )
-
-
-                    if option.walkingMinutes > 0 {
-
-                        informationColumn(
-                            title:
-                                "Walking",
-
-                            value:
-                                "\(option.walkingMinutes) min"
+                    ForEach(Array(comparisonMetrics(for: option).enumerated()), id: \.offset) { _, metric in
+                        MetricColumn(
+                            title: metric.title,
+                            value: metric.value,
+                            systemImage: metric.systemImage
                         )
-                    } else {
-
-                        Spacer()
-                            .frame(
-                                maxWidth:
-                                    .infinity
-                            )
                     }
                 }
-
-
-                // -------------------------------------------------
-                // Journey Details
-                // -------------------------------------------------
 
                 if option.orderedSegments.count > 1 {
-
                     Divider()
 
-
-                    VStack(
-                        alignment: .leading,
-                        spacing: 10
-                    ) {
-
-                        Text(
-                            "Journey Details"
-                        )
-                        .font(.subheadline)
-                        .fontWeight(
-                            .semibold
-                        )
-
-
-                        ForEach(
-                            Array(
-                                option
-                                    .orderedSegments
-                                    .enumerated()
-                            ),
-                            id: \.element.id
-                        ) {
-                            index,
-                            segment in
-
-
-                            decisionSegmentRow(
-                                segment:
-                                    segment
-                            )
-
-
-                            if index <
-                                option.orderedSegments.count - 1 {
-
-                                HStack {
-
-                                    Rectangle()
-                                        .fill(
-                                            Color.secondary.opacity(
-                                                0.25
-                                            )
-                                        )
-                                        .frame(
-                                            width: 2,
-                                            height: 18
-                                        )
-                                        .padding(
-                                            .leading,
-                                            10
-                                        )
-
-
-                                    if !segment.isWalking &&
-                                        !option.orderedSegments[
-                                            index + 1
-                                        ].isWalking {
-
-                                        Text(
-                                            "Transfer"
-                                        )
-                                        .font(.caption2)
-                                        .foregroundStyle(
-                                            .secondary
-                                        )
-                                    }
-
-
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
-                }
-
-
-                // -------------------------------------------------
-                // Selection State
-                // -------------------------------------------------
-
-                if isSelected {
-
-                    Divider()
-
-
-                    HStack {
-
-                        Spacer()
-
-
-                        Image(
-                            systemName:
-                                "checkmark.circle.fill"
-                        )
-
-
-                        Text(
-                            "Selected"
-                        )
-                        .fontWeight(
-                            .semibold
-                        )
-
-
-                        Spacer()
-                    }
-                    .foregroundStyle(
-                        Color.accentColor
-                    )
+                    journeySegments(option.orderedSegments)
                 }
             }
-            .padding()
-            .frame(
-                maxWidth: .infinity,
-                alignment: .leading
-            )
-            .background(
-                isSelected
-                ? Color.accentColor.opacity(
-                    0.07
-                )
-                : Color(
-                    .secondarySystemBackground
-                )
+            .appCard(
+                background: isSelected
+                    ? AppColor.accent.opacity(0.08)
+                    : AppColor.surface,
+                showsBorder: true
             )
             .overlay {
-
-                RoundedRectangle(
-                    cornerRadius: 18
-                )
-                .stroke(
-                    isSelected
-                    ? Color.accentColor
-                    : Color.secondary.opacity(
-                        0.18
-                    ),
-                    lineWidth:
-                        isSelected
-                        ? 2
-                        : 1
-                )
+                RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                    .stroke(
+                        isSelected ? AppColor.accent : Color.clear,
+                        lineWidth: 2
+                    )
             }
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 18
-                )
-            )
         }
-        .buttonStyle(
-            .plain
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel(for: option, rank: rank))
+        .accessibilityHint("Double tap to \(isSelected ? "deselect" : "select") this journey.")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func optionStateLabels(
+        rank: Int,
+        isCurrent: Bool,
+        isSelected: Bool
+    ) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: AppSpacing.small) {
+                stateBadges(rank: rank, isCurrent: isCurrent, isSelected: isSelected)
+                Spacer(minLength: 0)
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.small) {
+                stateBadges(rank: rank, isCurrent: isCurrent, isSelected: isSelected)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func stateBadges(
+        rank: Int,
+        isCurrent: Bool,
+        isSelected: Bool
+    ) -> some View {
+        if rank == 0 {
+            JourneyEmphasisBadge(emphasis: .recommended)
+        }
+
+        if isCurrent {
+            JourneyEmphasisBadge(emphasis: .currentJourney)
+        }
+
+        if isSelected {
+            JourneyEmphasisBadge(emphasis: .selected)
+        }
+    }
+
+    private func routeIdentity(_ option: JourneyOption) -> some View {
+        HStack(alignment: .top, spacing: AppSpacing.medium) {
+            Image(systemName: mainTransportIcon(for: option))
+                .font(.title2)
+                .foregroundStyle(AppColor.accent)
+                .frame(width: AppLayout.iconSize, height: AppLayout.iconSize)
+                .background(AppColor.accent.opacity(0.10))
+                .clipShape(Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: AppSpacing.extraSmall) {
+                Text(option.transportModeText)
+                    .font(AppTypography.metadata)
+                    .foregroundStyle(.secondary)
+
+                Text(option.routeSummary)
+                    .font(AppTypography.cardTitle)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("\(option.origin) to \(option.destination)")
+                    .font(AppTypography.supporting)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: AppSpacing.small)
+        }
+    }
+
+    private func selectionSummary(_ option: JourneyOption) -> some View {
+        InformationNotice(
+            title: "Selected Journey",
+            message: "\(option.routeSummary), arriving at \(option.expectedArrival).",
+            status: .success("Selected")
         )
     }
 
+    private func journeySegments(_ segments: [JourneySegment]) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            Text("Journey details")
+                .font(AppTypography.cardTitle)
 
-    // ========================================================
-    // MARK: - Segment Row
-    // ========================================================
+            ForEach(segments) { segment in
+                HStack(alignment: .top, spacing: AppSpacing.medium) {
+                    Image(systemName: segment.transportIcon)
+                        .foregroundStyle(serviceStatus(for: segment).foregroundStyle)
+                        .frame(width: AppLayout.iconSize)
+                        .accessibilityHidden(true)
 
-    @ViewBuilder
-    private func decisionSegmentRow(
-        segment: JourneySegment
-    ) -> some View {
+                    VStack(alignment: .leading, spacing: AppSpacing.extraSmall) {
+                        Text(segment.routeDisplayText)
+                            .font(AppTypography.cardTitle)
 
-        HStack(
-            alignment: .top,
-            spacing: 10
-        ) {
+                        Text("\(segment.origin) to \(segment.destination)")
+                            .font(AppTypography.supporting)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-            Image(
-                systemName:
-                    segment.transportIcon
-            )
-            .frame(
-                width: 22
-            )
-
-
-            VStack(
-                alignment: .leading,
-                spacing: 3
-            ) {
-
-                Text(
-                    segment.routeDisplayText
-                )
-                .font(.subheadline)
-                .fontWeight(
-                    .medium
-                )
-
-
-                Text(
-                    "\(segment.origin) → \(segment.destination)"
-                )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                Text(
-                    "\(segment.departureText) → \(segment.arrivalText)"
-                )
-                .font(.caption2)
-                .foregroundStyle(
-                    .secondary
-                )
+                        StatusBadge(status: serviceStatus(for: segment))
+                    }
+                }
+                .accessibilityElement(children: .combine)
             }
+        }
+    }
 
-
-            Spacer()
-
-
-            Text(
-                segment.delayText
+    private func comparisonMetrics(for option: JourneyOption) -> [JourneyMetric] {
+        var metrics = [
+            JourneyMetric(
+                title: "Departure",
+                value: departureText(for: option),
+                systemImage: "arrow.up.right"
+            ),
+            JourneyMetric(
+                title: "Expected arrival",
+                value: option.expectedArrival,
+                systemImage: "arrow.down.right"
+            ),
+            JourneyMetric(
+                title: "Transfers",
+                value: option.transferText,
+                systemImage: "arrow.triangle.branch"
+            ),
+            JourneyMetric(
+                title: "Duration",
+                value: "\(option.totalMinutes) min",
+                systemImage: "clock"
+            ),
+            JourneyMetric(
+                title: "Delay",
+                value: option.delayText,
+                systemImage: "clock.badge.exclamationmark"
             )
-            .font(.caption)
-            .foregroundStyle(
+        ]
+
+        if option.walkingMinutes > 0 {
+            metrics.append(
+                JourneyMetric(
+                    title: "Walking",
+                    value: "\(option.walkingMinutes) min",
+                    systemImage: "figure.walk"
+                )
+            )
+        }
+
+        return metrics
+    }
+
+    private func serviceStatus(for option: JourneyOption) -> PresentationStatus {
+        if option.isCancelled {
+            return .cancelled("Unavailable")
+        }
+
+        if option.hasDisruption {
+            return .delayed(option.delayText)
+        }
+
+        return .normal("On time")
+    }
+
+    private func serviceStatus(for segment: JourneySegment) -> PresentationStatus {
+        if segment.isCancelled {
+            return .cancelled()
+        }
+
+        if segment.delayMinutes > 0 || segment.disruptionType != "Normal Service" {
+            return .delayed(
                 segment.delayMinutes > 0
-                ? .orange
-                : .secondary
+                    ? "\(segment.delayMinutes) min delay"
+                    : segment.disruptionType
             )
         }
+
+        return .normal("On time")
     }
 
-
-    // ========================================================
-    // MARK: - Badge
-    // ========================================================
-
-    @ViewBuilder
-    private func badge(
-        text: String,
-        icon: String,
-        colour: Color
-    ) -> some View {
-
-        HStack(
-            spacing: 5
-        ) {
-
-            Image(
-                systemName:
-                    icon
-            )
-
-
-            Text(
-                text
-            )
-        }
-        .font(.caption2)
-        .fontWeight(.bold)
-        .foregroundStyle(
-            colour
-        )
-        .padding(
-            .horizontal,
-            9
-        )
-        .padding(
-            .vertical,
-            5
-        )
-        .background(
-            colour.opacity(
-                0.10
-            )
-        )
-        .clipShape(
-            Capsule()
-        )
+    private func departureText(for option: JourneyOption) -> String {
+        option.firstSegment?.scheduledDeparture
+            ?? option.firstSegment?.expectedDeparture
+            ?? option.expectedDeparture
     }
 
-
-    // ========================================================
-    // MARK: - Selected Journey
-    // ========================================================
-
-    @ViewBuilder
-    private func selectedJourneyCard(
-        _ option: JourneyOption
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 12
-        ) {
-
-            Label(
-                "Your Selection",
-                systemImage:
-                    "checkmark.circle.fill"
-            )
-            .font(.headline)
-            .foregroundStyle(
-                .green
-            )
-
-
-            Text(
-                option.routeSummary
-            )
-            .font(.headline)
-
-
-            Text(
-                "\(option.origin) → \(option.destination)"
-            )
-            .font(.subheadline)
-            .foregroundStyle(
-                .secondary
-            )
-
-
-            HStack {
-
-                Text(
-                    "Expected arrival"
-                )
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                Spacer()
-
-
-                Text(
-                    option.expectedArrival
-                )
-                .fontWeight(
-                    .semibold
-                )
-            }
-            .font(.subheadline)
-
-
-            Text(
-                "Tap the selected option again if you want to deselect it."
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-        }
-        .padding()
-        .background(
-            Color.green.opacity(
-                0.06
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 16
-            )
-        )
+    private func mainTransportIcon(for option: JourneyOption) -> String {
+        option.firstSegment?.transportIcon ?? "arrow.triangle.branch"
     }
 
+    private func accessibilityLabel(for option: JourneyOption, rank: Int) -> String {
+        let recommendation = rank == 0 ? "Recommended option. " : ""
+        let current = journey.isCurrentJourney(option) ? "Current journey. " : ""
 
-    // ========================================================
-    // MARK: - Information Column
-    // ========================================================
-
-    @ViewBuilder
-    private func informationColumn(
-        title: String,
-        value: String
-    ) -> some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 4
-        ) {
-
-            Text(
-                title
-            )
-            .font(.caption)
-            .foregroundStyle(
-                .secondary
-            )
-
-
-            Text(
-                value
-            )
-            .font(.subheadline)
-            .fontWeight(
-                .semibold
-            )
-            .foregroundStyle(
-                .primary
-            )
-        }
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
-        )
-    }
-
-
-    // ========================================================
-    // MARK: - Departure
-    // ========================================================
-
-    private func departureText(
-        for option: JourneyOption
-    ) -> String {
-
-        guard let first =
-                option.orderedSegments.first
-        else {
-
-            return
-                option.expectedDeparture
-        }
-
-
-        return first.expectedDeparture
-            ??
-            first.scheduledDeparture
-            ??
-            option.expectedDeparture
-    }
-
-
-    private func scheduledDepartureText(
-        for option: JourneyOption
-    ) -> String {
-
-        guard let first =
-                option.orderedSegments.first
-        else {
-
-            return
-                option.expectedDeparture
-        }
-
-
-        return first.scheduledDeparture
-            ??
-            first.expectedDeparture
-            ??
-            option.expectedDeparture
-    }
-
-
-    // ========================================================
-    // MARK: - Transport Icon
-    // ========================================================
-
-    private func mainTransportIcon(
-        for option: JourneyOption
-    ) -> String {
-
-        guard let first =
-                option.orderedSegments.first
-        else {
-
-            return
-                "arrow.triangle.branch"
-        }
-
-
-        return first.transportIcon
-    }
-
-
-    // ========================================================
-    // MARK: - No Options
-    // ========================================================
-
-    private var noOptionsView:
-        some View {
-
-        VStack(
-            spacing: 14
-        ) {
-
-            Image(
-                systemName:
-                    "exclamationmark.triangle"
-            )
-            .font(
-                .system(
-                    size: 40
-                )
-            )
-            .foregroundStyle(
-                .secondary
-            )
-
-
-            Text(
-                "No Available Options"
-            )
-            .font(.headline)
-
-
-            Text(
-                "No suitable journeys are currently available within the comparison window."
-            )
-            .font(.subheadline)
-            .foregroundStyle(
-                .secondary
-            )
-            .multilineTextAlignment(
-                .center
-            )
-        }
-        .frame(
-            maxWidth: .infinity
-        )
-        .padding(
-            .vertical,
-            32
-        )
-        .padding()
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
+        return "\(recommendation)\(current)\(option.routeSummary), from \(option.origin) to \(option.destination), expected arrival \(option.expectedArrival), \(option.transferText), \(option.delayText)."
     }
 }

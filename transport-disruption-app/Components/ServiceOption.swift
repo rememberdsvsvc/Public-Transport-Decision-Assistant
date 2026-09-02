@@ -5,217 +5,88 @@
 
 import SwiftUI
 
+struct ServiceOptionPresentation {
+    let title: String
+    let systemImage: String
+    let route: String
+    let origin: String
+    let destination: String
+    let metrics: [JourneyMetric]
+    let status: PresentationStatus
+    var emphases: Set<JourneyEmphasis> = []
+    var segments: [JourneySegmentPresentation] = []
+}
+
 struct ServiceOption: View {
-    
-    // MARK: - Service Data
-    
-    let service: TransportService
-    
-    
-    // MARK: - User Action
-    
+    let option: ServiceOptionPresentation
     let buttonTitle: String
+    var isActionEnabled: Bool = true
     let action: () -> Void
-    
-    
-    // MARK: - Body
-    
+
     var body: some View {
-        
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-            
-            // MARK: Route Header
-            
-            HStack {
-                
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    
-                    Text(service.routeName)
-                        .font(.title3)
-                        .fontWeight(.bold)
-                    
-                    Text(
-                        "\(service.origin) → \(service.destination)"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                }
-                
-                Spacer()
-                
-                Image(systemName: "bus.fill")
-                    .font(.title2)
-                    .foregroundStyle(.blue)
-            }
-            
-            
-            Divider()
-            
-            
-            // MARK: Time Information
-            
-            HStack(spacing: 20) {
-                
-                VStack(
-                    alignment: .leading,
-                    spacing: 4
-                ) {
-                    
-                    Text("Departure")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    Text(service.scheduledDeparture)
-                        .font(.headline)
-                }
-                
-                
-                Spacer()
-                
-                
-                Image(systemName: "arrow.right")
-                    .foregroundStyle(.secondary)
-                
-                
-                Spacer()
-                
-                
-                VStack(
-                    alignment: .trailing,
-                    spacing: 4
-                ) {
-                    
-                    Text("Arrival")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    Text(service.scheduledArrival)
-                        .font(.headline)
-                }
-            }
-            
-            
-            // MARK: Journey Details
-            
-            HStack(spacing: 18) {
-                
-                Label(
-                    "\(service.journeyMinutes) min",
-                    systemImage: "clock"
-                )
-                
-                Label(
-                    service.transferText,
-                    systemImage: "arrow.triangle.branch"
-                )
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            
-            
-            // MARK: Disruption Status
-            
-            if service.hasDisruption {
-                
-                HStack {
-                    
-                    Image(
-                        systemName: disruptionIcon
-                    )
-                    
-                    Text(service.disruptionType)
-                        .fontWeight(.semibold)
-                    
-                    Spacer()
-                    
-                    Text(service.delayText)
-                }
-                .font(.subheadline)
-                .foregroundStyle(disruptionColor)
-            }
-            
-            
-            // MARK: Select Button
-            
-            Button {
-                
-                action()
-                
-            } label: {
-                
-                HStack {
-                    
-                    Spacer()
-                    
-                    Text(buttonTitle)
-                        .fontWeight(.semibold)
-                    
-                    Image(
-                        systemName: "arrow.right.circle.fill"
-                    )
-                    
-                    Spacer()
-                }
-                .padding(.vertical, 4)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
-        .background(
-            Color(.secondarySystemBackground)
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 16
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            JourneySummary(
+                title: option.title,
+                systemImage: option.systemImage,
+                route: option.route,
+                origin: option.origin,
+                destination: option.destination,
+                metrics: option.metrics,
+                status: option.status,
+                emphases: option.emphases
             )
-        )
-    }
-    
-    
-    // MARK: - Disruption Icon
-    
-    private var disruptionIcon: String {
-        
-        switch service.disruptionType {
-            
-        case "Cancelled":
-            return "xmark.octagon.fill"
-            
-        case "Major Delay":
-            return "exclamationmark.triangle.fill"
-            
-        case "Minor Delay":
-            return "clock.badge.exclamationmark"
-            
-        default:
-            return "info.circle.fill"
+
+            if !option.segments.isEmpty {
+                JourneyTimeline(title: "Journey details", segments: option.segments)
+            }
+
+            PrimaryActionButton(title: buttonTitle, trailingSystemImage: "arrow.right") {
+                action()
+            }
+            .disabled(!isActionEnabled)
         }
     }
-    
-    
-    // MARK: - Disruption Colour
-    
-    private var disruptionColor: Color {
-        
-        switch service.severity {
-            
-        case "High":
-            return .red
-            
-        case "Medium":
-            return .orange
-            
-        case "Low":
-            return .yellow
-            
-        default:
-            return .secondary
-        }
+}
+
+#Preview("Service option states") {
+    AppPageContainer {
+        ServiceOption(
+            option: ServiceOptionPresentation(
+                title: "Option 1",
+                systemImage: "bus.fill",
+                route: "Route 66 via Cultural Centre",
+                origin: "University of Queensland Lakes",
+                destination: "Brisbane City",
+                metrics: [
+                    JourneyMetric(title: "Departure", value: "8:10 AM"),
+                    JourneyMetric(title: "Expected arrival", value: "9:05 AM"),
+                    JourneyMetric(title: "Transfers", value: "Direct"),
+                    JourneyMetric(title: "Duration", value: "55 min")
+                ],
+                status: .normal(),
+                emphases: [.recommended, .selected]
+            ),
+            buttonTitle: "Use This Journey"
+        ) {}
+
+        ServiceOption(
+            option: ServiceOptionPresentation(
+                title: "Current journey",
+                systemImage: "tram.fill",
+                route: "Ipswich Line with an intentionally long service description",
+                origin: "Roma Street",
+                destination: "Indooroopilly Station",
+                metrics: [
+                    JourneyMetric(title: "Departure", value: "9:12 AM"),
+                    JourneyMetric(title: "Expected arrival", value: "Unavailable")
+                ],
+                status: .cancelled(),
+                emphases: [.currentJourney]
+            ),
+            buttonTitle: "Unavailable",
+            isActionEnabled: false
+        ) {}
     }
+    .preferredColorScheme(.dark)
+    .environment(\.dynamicTypeSize, .accessibility1)
 }

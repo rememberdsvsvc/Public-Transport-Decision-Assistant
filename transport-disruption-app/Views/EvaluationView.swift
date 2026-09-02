@@ -5,834 +5,280 @@
 
 import SwiftUI
 
-
 struct EvaluationView: View {
-
     @Binding var journey: Journey
 
-
-    // ========================================================
-    // MARK: - Evaluation State
-    // ========================================================
-
     @State private var informationClarity: Double = 3
-
     @State private var journeyImpactUnderstanding: Double = 3
-
     @State private var alternativesClarity: Double = 3
-
     @State private var actionability: Double = 3
-
     @State private var decisionConfidence: Double = 3
-
     @State private var uncertainty: Double = 3
 
-
     @State private var feedback: String = ""
+    @State private var submitted = false
 
-    @State private var submitted =
-        false
-
-
-    // ========================================================
-    // MARK: - Body
-    // ========================================================
+    @FocusState private var feedbackIsFocused: Bool
 
     var body: some View {
-
         ScrollView {
+            VStack(alignment: .leading, spacing: AppSpacing.extraLarge) {
+                PageHeader(
+                    title: "Evaluation",
+                    subtitle: "Please evaluate how effectively the disruption information and decision support helped you make your travel decision."
+                )
 
-            VStack(
-                alignment: .leading,
-                spacing: 24
-            ) {
-
-                // =================================================
-                // MARK: Page Header
-                // =================================================
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 8
-                ) {
-
-                    Text(
-                        "Evaluation"
-                    )
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-
-
-                    Text(
-                        "Please evaluate how effectively the disruption information and decision support helped you make your travel decision."
-                    )
-                    .foregroundStyle(
-                        .secondary
-                    )
+                if let currentJourney = journey.selectedJourney {
+                    journeySummaryCard(currentJourney: currentJourney)
                 }
 
-
-                // =================================================
-                // MARK: Journey Summary
-                // =================================================
-
-                if let currentJourney =
-                    journey.selectedJourney {
-
-                    journeySummaryCard(
-                        currentJourney:
-                            currentJourney
-                    )
-                }
-
-
-                // =================================================
-                // MARK: Evaluation Questions
-                // =================================================
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 8
-                ) {
-
-                    Text(
-                        "Your Experience"
-                    )
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-
-                    Text(
-                        "Rate each statement from 1 (Strongly disagree) to 5 (Strongly agree)."
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-
-
-                EvaluationSlider(
-
-                    title:
-                        "Information Clarity",
-
-                    description:
-                        "The disruption information was clear and easy to understand.",
-
-                    value:
-                        $informationClarity
+                SectionHeader(
+                    title: "Your Experience",
+                    subtitle: "Rate each statement from 1 (Strongly disagree) to 5 (Strongly agree)."
                 )
 
-
                 EvaluationSlider(
-
-                    title:
-                        "Journey Impact Understanding",
-
-                    description:
-                        "I understood how the disruption would affect my planned journey.",
-
-                    value:
-                        $journeyImpactUnderstanding
+                    title: "Information Clarity",
+                    description: "The disruption information was clear and easy to understand.",
+                    value: $informationClarity
                 )
 
-
                 EvaluationSlider(
-
-                    title:
-                        "Alternatives Clarity",
-
-                    description:
-                        "The available travel alternatives were presented clearly and were easy to compare.",
-
-                    value:
-                        $alternativesClarity
+                    title: "Journey Impact Understanding",
+                    description: "I understood how the disruption would affect my planned journey.",
+                    value: $journeyImpactUnderstanding
                 )
 
-
                 EvaluationSlider(
-
-                    title:
-                        "Actionability",
-
-                    description:
-                        "The information helped me understand what actions I could take next.",
-
-                    value:
-                        $actionability
+                    title: "Alternatives Clarity",
+                    description: "The available travel alternatives were presented clearly and were easy to compare.",
+                    value: $alternativesClarity
                 )
 
-
                 EvaluationSlider(
-
-                    title:
-                        "Decision Confidence",
-
-                    description:
-                        "The system helped me feel more confident about my final travel decision.",
-
-                    value:
-                        $decisionConfidence
+                    title: "Actionability",
+                    description: "The information helped me understand what actions I could take next.",
+                    value: $actionability
                 )
 
-
                 EvaluationSlider(
-
-                    title:
-                        "Reduced Uncertainty",
-
-                    description:
-                        "The information reduced uncertainty about what I should do during the disruption.",
-
-                    value:
-                        $uncertainty
+                    title: "Decision Confidence",
+                    description: "The system helped me feel more confident about my final travel decision.",
+                    value: $decisionConfidence
                 )
 
+                EvaluationSlider(
+                    title: "Reduced Uncertainty",
+                    description: "The information reduced uncertainty about what I should do during the disruption.",
+                    value: $uncertainty
+                )
 
-                // =================================================
-                // MARK: Open Feedback
-                // =================================================
+                feedbackSection
 
-                VStack(
-                    alignment: .leading,
-                    spacing: 10
-                ) {
-
-                    Text(
-                        "Additional Feedback"
-                    )
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-
-                    Text(
-                        "Optional: tell us what was clear, confusing, helpful or difficult to use."
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(
-                        .secondary
-                    )
-
-
-                    TextEditor(
-                        text:
-                            $feedback
-                    )
-                    .frame(
-                        minHeight: 130
-                    )
-                    .padding(8)
-                    .background(
-                        Color(
-                            .secondarySystemBackground
-                        )
-                    )
-                    .clipShape(
-                        RoundedRectangle(
-                            cornerRadius: 14
-                        )
-                    )
-                }
-
-
-                // =================================================
-                // MARK: Submit
-                // =================================================
-
-                if !submitted {
-
-                    Button {
-
-                        submitEvaluation()
-
-                    } label: {
-
-                        HStack {
-
-                            Spacer()
-
-
-                            Image(
-                                systemName:
-                                    "paperplane.fill"
-                            )
-
-
-                            Text(
-                                "Submit Evaluation"
-                            )
-                            .fontWeight(
-                                .semibold
-                            )
-
-
-                            Spacer()
-                        }
-                        .padding(
-                            .vertical,
-                            4
-                        )
-                    }
-                    .buttonStyle(
-                        .borderedProminent
-                    )
-
-                } else {
-
+                if submitted {
                     submissionConfirmation
+                } else {
+                    submitButton
                 }
             }
-            .padding()
+            .appPageWidth()
+            .padding(.vertical, AppSpacing.extraLarge)
+            .fontDesign(.rounded)
         }
-        .navigationTitle(
-            "Evaluation"
-        )
-        .navigationBarTitleDisplayMode(
-            .inline
-        )
+        .background(AppColor.pageBackground.ignoresSafeArea())
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+
+                Button("Done") {
+                    feedbackIsFocused = false
+                }
+            }
+        }
     }
 
+    private var feedbackSection: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.medium) {
+            SectionHeader(
+                title: "Additional Feedback",
+                subtitle: "Optional: tell us what was clear, confusing, helpful or difficult to use."
+            )
 
-    // ========================================================
-    // MARK: - Journey Summary Card
-    // ========================================================
+            ZStack(alignment: .topLeading) {
+                if feedback.isEmpty {
+                    Text("Share any additional thoughts")
+                        .font(.body)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, AppSpacing.large)
+                        .padding(.vertical, AppSpacing.large + 1)
+                        .allowsHitTesting(false)
+                }
+
+                TextEditor(text: $feedback)
+                    .focused($feedbackIsFocused)
+                    .font(.body)
+                    .scrollContentBackground(.hidden)
+                    .padding(AppSpacing.small)
+                    .frame(minHeight: 150)
+                    .background(Color.clear)
+                    .accessibilityLabel("Additional feedback")
+                    .accessibilityHint("Optional. Enter what was clear, confusing, helpful or difficult to use.")
+            }
+            .background(AppColor.surface)
+            .overlay {
+                RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                    .stroke(
+                        feedbackIsFocused ? AppColor.ink : AppColor.separator,
+                        lineWidth: feedbackIsFocused ? 2 : 1
+                    )
+            }
+            .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.medium))
+        }
+    }
+
+    private var submitButton: some View {
+        PrimaryActionButton(
+            title: "Submit Evaluation",
+            systemImage: "paperplane.fill",
+            trailingSystemImage: nil
+        ) {
+            submitEvaluation()
+        }
+        .tint(AppColor.ink)
+        .padding(3)
+        .background(AppColor.vanilla)
+        .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.medium + 3))
+    }
 
     @ViewBuilder
-    private func journeySummaryCard(
-        currentJourney: JourneyOption
-    ) -> some View {
+    private func journeySummaryCard(currentJourney: JourneyOption) -> some View {
+        let displayedJourney = journey.selectedOption ?? currentJourney
+        let selectedCurrentJourney = journey.selectedOption?.id == currentJourney.id
 
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            Label(
-                "Journey Summary",
-                systemImage:
-                    mainTransportIcon(
-                        for:
-                            currentJourney
-                    )
-            )
-            .font(.headline)
-
-
-            // -------------------------------------------------
-            // Original Current Journey
-            // -------------------------------------------------
-
-            VStack(
-                alignment: .leading,
-                spacing: 6
-            ) {
-
-                Text(
-                    "Original Journey"
+        JourneySummary(
+            title: journey.selectedOption == nil ? "Original Journey" : "Your Final Choice",
+            systemImage: mainTransportIcon(for: displayedJourney),
+            route: displayedJourney.routeSummary,
+            origin: displayedJourney.origin,
+            destination: displayedJourney.destination,
+            metrics: [
+                JourneyMetric(
+                    title: "Departure",
+                    value: journey.selectedOption == nil
+                        ? scheduledDepartureText(for: currentJourney)
+                        : displayedJourney.expectedDeparture,
+                    systemImage: "clock"
+                ),
+                JourneyMetric(
+                    title: "Expected arrival",
+                    value: displayedJourney.expectedArrival,
+                    systemImage: "flag.checkered"
+                ),
+                JourneyMetric(
+                    title: "Journey",
+                    value: "\(displayedJourney.transportModeText) · \(displayedJourney.totalMinutes) min · \(displayedJourney.transferText)",
+                    systemImage: "point.topleft.down.to.point.bottomright.curvepath"
                 )
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-
-
-                Text(
-                    currentJourney.routeSummary
-                )
-                .font(.headline)
-
-
-                Text(
-                    "\(currentJourney.origin) → \(currentJourney.destination)"
-                )
-                .font(.subheadline)
-
-
-                HStack(
-                    spacing: 6
-                ) {
-
-                    Text(
-                        currentJourney.transportModeText
-                    )
-
-
-                    Text(
-                        "•"
-                    )
-
-
-                    Text(
-                        scheduledDepartureText(
-                            for:
-                                currentJourney
-                        )
-                    )
-
-
-                    Text(
-                        "•"
-                    )
-
-
-                    Text(
-                        currentJourney.transferText
-                    )
-                }
-                .font(.caption)
-                .foregroundStyle(
-                    .secondary
-                )
-            }
-
-
-            // -------------------------------------------------
-            // Selected Final Option
-            // -------------------------------------------------
-
-            if let selectedOption =
-                journey.selectedOption {
-
-                Divider()
-
-
-                VStack(
-                    alignment: .leading,
-                    spacing: 6
-                ) {
-
-                    Label(
-                        "Your Final Choice",
-                        systemImage:
-                            "checkmark.circle.fill"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(
-                        .green
-                    )
-
-
-                    Text(
-                        selectedOption.routeSummary
-                    )
-                    .font(.headline)
-
-
-                    Text(
-                        "\(selectedOption.origin) → \(selectedOption.destination)"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(
-                        .secondary
-                    )
-
-
-                    HStack {
-
-                        Text(
-                            "Expected arrival:"
-                        )
-
-
-                        Text(
-                            selectedOption.expectedArrival
-                        )
-                        .fontWeight(
-                            .semibold
-                        )
-                    }
-                    .font(.subheadline)
-
-
-                    HStack(
-                        spacing: 6
-                    ) {
-
-                        Text(
-                            selectedOption.transportModeText
-                        )
-
-
-                        Text(
-                            "•"
-                        )
-
-
-                        Text(
-                            "\(selectedOption.totalMinutes) min"
-                        )
-
-
-                        Text(
-                            "•"
-                        )
-
-
-                        Text(
-                            selectedOption.transferText
-                        )
-
-
-                        if selectedOption.includesWalking {
-
-                            Text(
-                                "•"
-                            )
-
-
-                            Text(
-                                "\(selectedOption.walkingMinutes) min walking"
-                            )
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(
-                        .secondary
-                    )
-
-
-                    // -----------------------------------------
-                    // Show whether user stayed or changed
-                    // -----------------------------------------
-
-                    Divider()
-
-
-                    HStack(
-                        spacing: 8
-                    ) {
-
-                        Image(
-                            systemName:
-                                selectedOption.id ==
-                                currentJourney.id
-                                ? "arrow.forward.circle.fill"
-                                : "arrow.triangle.swap"
-                        )
-
-
-                        Text(
-                            selectedOption.id ==
-                            currentJourney.id
-                            ? "You chose to continue with your current journey."
-                            : "You chose a different journey."
-                        )
-                        .font(.caption)
-                        .fontWeight(
-                            .medium
-                        )
-                    }
-                    .foregroundStyle(
-                        .secondary
-                    )
-                }
-            }
-        }
-        .padding()
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
-        )
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
+            ],
+            status: journey.selectedOption == nil
+                ? nil
+                : .success(selectedCurrentJourney ? "Current journey kept" : "Alternative selected")
         )
     }
 
-
-    // ========================================================
-    // MARK: - Main Transport Icon
-    // ========================================================
-
-    private func mainTransportIcon(
-        for option: JourneyOption
-    ) -> String {
-
-        guard let firstSegment =
-                option.orderedSegments.first
-        else {
-
-            return
-                "arrow.triangle.branch"
+    private func mainTransportIcon(for option: JourneyOption) -> String {
+        guard let firstSegment = option.orderedSegments.first else {
+            return "arrow.triangle.branch"
         }
-
 
         return firstSegment.transportIcon
     }
 
-
-    // ========================================================
-    // MARK: - Scheduled Departure
-    // ========================================================
-
-    private func scheduledDepartureText(
-        for option: JourneyOption
-    ) -> String {
-
-        guard let firstSegment =
-                option.orderedSegments.first
-        else {
-
-            return
-                option.expectedDeparture
+    private func scheduledDepartureText(for option: JourneyOption) -> String {
+        guard let firstSegment = option.orderedSegments.first else {
+            return option.expectedDeparture
         }
-
 
         return firstSegment.scheduledDeparture
-            ??
-            firstSegment.expectedDeparture
-            ??
-            option.expectedDeparture
+            ?? firstSegment.expectedDeparture
+            ?? option.expectedDeparture
     }
 
-
-    // ========================================================
-    // MARK: - Submit Evaluation
-    // ========================================================
-
     private func submitEvaluation() {
+        submitted = true
 
-        submitted =
-            true
+        print("----- Evaluation Submitted -----")
+        print("Information Clarity: \(Int(informationClarity))/5")
+        print("Journey Impact Understanding: \(Int(journeyImpactUnderstanding))/5")
+        print("Alternatives Clarity: \(Int(alternativesClarity))/5")
+        print("Actionability: \(Int(actionability))/5")
+        print("Decision Confidence: \(Int(decisionConfidence))/5")
+        print("Reduced Uncertainty: \(Int(uncertainty))/5")
+        print("Feedback: \(feedback)")
 
-
-        print(
-            "----- Evaluation Submitted -----"
-        )
-
-
-        print(
-            "Information Clarity: \(Int(informationClarity))/5"
-        )
-
-
-        print(
-            "Journey Impact Understanding: \(Int(journeyImpactUnderstanding))/5"
-        )
-
-
-        print(
-            "Alternatives Clarity: \(Int(alternativesClarity))/5"
-        )
-
-
-        print(
-            "Actionability: \(Int(actionability))/5"
-        )
-
-
-        print(
-            "Decision Confidence: \(Int(decisionConfidence))/5"
-        )
-
-
-        print(
-            "Reduced Uncertainty: \(Int(uncertainty))/5"
-        )
-
-
-        print(
-            "Feedback: \(feedback)"
-        )
-
-
-        // ----------------------------------------------------
-        // Original Journey
-        // ----------------------------------------------------
-
-        if let currentJourney =
-            journey.selectedJourney {
-
-            print(
-                "Original Journey: \(currentJourney.routeSummary)"
-            )
-
-
-            print(
-                "Original Expected Arrival: \(currentJourney.expectedArrival)"
-            )
+        if let currentJourney = journey.selectedJourney {
+            print("Original Journey: \(currentJourney.routeSummary)")
+            print("Original Expected Arrival: \(currentJourney.expectedArrival)")
         }
 
+        if let selectedOption = journey.selectedOption {
+            print("Selected Transport Modes: \(selectedOption.transportModeText)")
+            print("Selected Route: \(selectedOption.routeSummary)")
+            print("Selected Expected Arrival: \(selectedOption.expectedArrival)")
 
-        // ----------------------------------------------------
-        // Final Choice
-        // ----------------------------------------------------
-
-        if let selectedOption =
-            journey.selectedOption {
-
-            print(
-                "Selected Transport Modes: \(selectedOption.transportModeText)"
-            )
-
-
-            print(
-                "Selected Route: \(selectedOption.routeSummary)"
-            )
-
-
-            print(
-                "Selected Expected Arrival: \(selectedOption.expectedArrival)"
-            )
-
-
-            if let currentJourney =
-                journey.selectedJourney {
-
-                let changedJourney =
-                    currentJourney.id !=
-                    selectedOption.id
-
-
-                print(
-                    "Changed Journey: \(changedJourney)"
-                )
+            if let currentJourney = journey.selectedJourney {
+                let changedJourney = currentJourney.id != selectedOption.id
+                print("Changed Journey: \(changedJourney)")
             }
         }
     }
 
-
-    // ========================================================
-    // MARK: - Submission Confirmation
-    // ========================================================
-
-    private var submissionConfirmation:
-        some View {
-
-        VStack(
-            alignment: .leading,
-            spacing: 14
-        ) {
-
-            Label(
-                "Evaluation Submitted",
-                systemImage:
-                    "checkmark.circle.fill"
+    private var submissionConfirmation: some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            InformationNotice(
+                title: "Evaluation Submitted",
+                message: "Thank you for evaluating the disruption-information and decision-support experience.",
+                status: .success("Submitted")
             )
-            .font(.title3)
-            .fontWeight(.bold)
-            .foregroundStyle(
-                .green
-            )
+            .background(AppColor.honeydew)
+            .clipShape(RoundedRectangle(cornerRadius: AppCornerRadius.large))
 
-
-            Text(
-                "Thank you for evaluating the disruption-information and decision-support experience."
-            )
-            .font(.subheadline)
-            .foregroundStyle(
-                .secondary
-            )
-
-
-            Divider()
-
-
-            evaluationResultRow(
-                title:
-                    "Information Clarity",
-
-                value:
-                    informationClarity
-            )
-
-
-            evaluationResultRow(
-                title:
-                    "Journey Impact",
-
-                value:
-                    journeyImpactUnderstanding
-            )
-
-
-            evaluationResultRow(
-                title:
-                    "Alternatives Clarity",
-
-                value:
-                    alternativesClarity
-            )
-
-
-            evaluationResultRow(
-                title:
-                    "Actionability",
-
-                value:
-                    actionability
-            )
-
-
-            evaluationResultRow(
-                title:
-                    "Decision Confidence",
-
-                value:
-                    decisionConfidence
-            )
-
-
-            evaluationResultRow(
-                title:
-                    "Reduced Uncertainty",
-
-                value:
-                    uncertainty
-            )
-        }
-        .padding()
-        .frame(
-            maxWidth: .infinity,
-            alignment: .leading
-        )
-        .background(
-            Color.green.opacity(
-                0.06
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
-    }
-
-
-    // ========================================================
-    // MARK: - Evaluation Result Row
-    // ========================================================
-
-    private func evaluationResultRow(
-        title: String,
-        value: Double
-    ) -> some View {
-
-        HStack {
-
-            Text(
-                title
-            )
-            .font(.subheadline)
-
-
-            Spacer()
-
-
-            Text(
-                "\(Int(value))/5"
-            )
-            .font(.subheadline)
-            .fontWeight(
-                .semibold
-            )
+            VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                evaluationResultRow(title: "Information Clarity", value: informationClarity)
+                evaluationResultRow(title: "Journey Impact", value: journeyImpactUnderstanding)
+                evaluationResultRow(title: "Alternatives Clarity", value: alternativesClarity)
+                evaluationResultRow(title: "Actionability", value: actionability)
+                evaluationResultRow(title: "Decision Confidence", value: decisionConfidence)
+                evaluationResultRow(title: "Reduced Uncertainty", value: uncertainty)
+            }
+            .accessibilityElement(children: .contain)
         }
     }
+
+    private func evaluationResultRow(title: String, value: Double) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: AppSpacing.small) {
+                Text(title)
+                    .font(AppTypography.supporting)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: AppSpacing.small)
+
+                Text("\(Int(value))/5")
+                    .font(AppTypography.supporting.weight(.semibold))
+            }
+
+            VStack(alignment: .leading, spacing: AppSpacing.extraSmall) {
+                Text(title)
+                    .font(AppTypography.supporting)
+
+                Text("\(Int(value))/5")
+                    .font(AppTypography.supporting.weight(.semibold))
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(Int(value)) out of 5")
+    }
+
 }
