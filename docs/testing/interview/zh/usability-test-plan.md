@@ -54,4 +54,4 @@
 
 前测问公共交通使用频率和中断时的通常做法。测试后问最容易/最困惑处、缺失信息、比较难点、使用阻碍、日常做法差异及一项改进建议。小型便利样本、本地模拟 SQLite 数据、原型保真度、测试环境、自我报告和缺少 B 组均为局限。
 
-招募前准备标准 UQ Participant Information Sheet 和 Consent Form。已签署的同意书、录制和可识别的转录内容仅保存在团队 OneDrive；研究笔记或仓库中只能保留去标识化笔记和引述。正式测试前先试点并修订；在第 6 周结束前预约参与者，在第 7 周进行测试。详见[探究与证据计划](deco6500-inquiry-plan.md)。
+招募前准备标准 UQ Participant Information Sheet 和 Consent Form。已签署的同意书、录制和可识别的转录内容仅保存在团队 OneDrive；研究笔记或仓库中只能保留去标识化笔记和引述。正式测试前先试点并修订；在第 6 周结束前预约参与者，在第 7 周进行测试。详见[探究与证据计划](../../requirements/zh/deco6500-inquiry-plan.md)。
