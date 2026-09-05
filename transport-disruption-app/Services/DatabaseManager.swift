@@ -655,25 +655,24 @@ final class DatabaseManager {
             }
 
 
+            // Page 3 alternatives must still be catchable at the
+            // selected decision time. Unlike Page 1, services that
+            // departed before selectedTime are not valid alternatives.
+            //
+            // This direct comparison is intentional: using a forward
+            // 24-hour difference would interpret an earlier service as
+            // departing on the following day (for example, 10:20 from
+            // a 10:30 reference becomes 1430 minutes).
+            guard departureMinutes >= selectedMinutes else {
+                continue
+            }
+
             let difference =
-                forwardMinuteDifference(
-
-                    from:
-                        selectedMinutes,
-
-                    to:
-                        departureMinutes
-                )
-
+                departureMinutes - selectedMinutes
 
             // Other alternatives:
             // selected time → +20 minutes
-
-            guard
-                difference >= 0,
-                difference <= 20
-            else {
-
+            guard difference <= 20 else {
                 continue
             }
 
@@ -1684,3 +1683,4 @@ private let SQLITE_TRANSIENT =
         to:
             sqlite3_destructor_type.self
     )
+

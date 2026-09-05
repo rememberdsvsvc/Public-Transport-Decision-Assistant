@@ -1297,10 +1297,26 @@ struct DecisionSupportView: View {
             return 0
         }
 
-        return forwardMinuteDifference(
-            from: referenceMinutes,
-            to: departureMinutes
-        )
+        // Calculate the nearest signed time difference so journeys that
+        // depart a few minutes before the selected search time do not get
+        // interpreted as departing on the following day.
+        //
+        // Example:
+        // selected time 10:30, departure 10:20
+        // old result: 1430 minutes waiting
+        // new result: 0 minutes waiting
+        var difference =
+            departureMinutes - referenceMinutes
+
+        if difference > 720 {
+            difference -= 1440
+        } else if difference < -720 {
+            difference += 1440
+        }
+
+        // A journey that departs before the selected reference time has
+        // no positive "waiting" time for comparison purposes.
+        return max(0, difference)
     }
 
     private func signedTimeDifference(
@@ -1509,6 +1525,7 @@ private extension String {
         return first.uppercased() + dropFirst()
     }
 }
+
 
 
 
