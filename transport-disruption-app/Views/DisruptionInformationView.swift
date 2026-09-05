@@ -23,9 +23,8 @@ struct DisruptionInformationView: View {
 
                     if let currentJourney = journey.selectedJourney {
                         disruptionConclusion(currentJourney)
+                        disruptionMap(currentJourney)
                         journeyImpact(currentJourney)
-                        affectedSegments(currentJourney)
-                        completeJourney(currentJourney)
                         comparisonAction(currentJourney)
                     } else {
                         EmptyStateView(
@@ -60,127 +59,433 @@ struct DisruptionInformationView: View {
         )
     }
 
+    // MARK: - Disruption Map
+
+    @ViewBuilder
+    private func disruptionMap(_ option: JourneyOption) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            SectionHeader(
+                title: "Affected Route",
+                subtitle: "See where the disruption occurs within your current journey.",
+                systemImage: "map.fill"
+            )
+
+            JourneyMapView(
+                            option: option
+                        )
+
+            if let affected = disruptedSegments(in: option).first {
+                HStack(alignment: .top, spacing: AppSpacing.medium) {
+                    Image(systemName: affected.isCancelled
+                          ? "xmark.octagon.fill"
+                          : "exclamationmark.triangle.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(
+                            affected.isCancelled
+                            ? AppColor.critical
+                            : AppColor.warning
+                        )
+
+                    VStack(alignment: .leading, spacing: AppSpacing.small) {
+                        Text("Affected segment")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(AppColor.ink.opacity(0.72))
+
+                        Text("\(affected.origin) → \(affected.destination)")
+                            .font(.headline)
+
+                        Text(affected.routeDisplayText)
+                            .font(AppTypography.supporting)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Text(
+                            affected.isCancelled
+                            ? "Cancelled"
+                            : affected.delayMinutes > 0
+                                ? "\(affected.disruptionType) • +\(affected.delayMinutes) min"
+                                : affected.disruptionType
+                        )
+                        .font(AppTypography.supporting)
+                        .foregroundStyle(
+                            affected.isCancelled
+                            ? AppColor.critical
+                            : AppColor.warning
+                        )
+                    }
+
+                    Spacer()
+                }
+                .padding(AppSpacing.medium)
+                .background(
+                    affected.isCancelled
+                    ? AppColor.critical.opacity(0.10)
+                    : AppColor.warning.opacity(0.10)
+                )
+                .clipShape(
+                    RoundedRectangle(cornerRadius: AppCornerRadius.medium)
+                )
+            } else {
+                Label(
+                    "No affected segment is currently recorded on this journey.",
+                    systemImage: "checkmark.circle.fill"
+                )
+                .font(AppTypography.supporting)
+                .foregroundStyle(AppColor.success)
+            }
+        }
+        .appCard(background: AppColor.pageBackground)
+    }
+
     // MARK: - Overall Impact
 
     @ViewBuilder
     private func journeyImpact(_ option: JourneyOption) -> some View {
         VStack(alignment: .leading, spacing: AppSpacing.large) {
-            SectionHeader(
-                title: "Overall Impact",
-                subtitle: "Compare the original arrival with the latest expected outcome.",
+
+            Label(
+                "Overall Impact",
                 systemImage: "clock.arrow.circlepath"
             )
+            .font(.title2.bold())
+            .foregroundStyle(AppColor.ink)
 
-            LazyVGrid(
-                columns: impactColumns,
-                alignment: .leading,
-                spacing: AppSpacing.large
-            ) {
-                MetricColumn(
-                    title: "Scheduled arrival",
-                    value: scheduledArrivalText(for: option),
-                    systemImage: "calendar"
-                )
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: AppSpacing.large) {
+                    journeyFlow(option)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                MetricColumn(
-                    title: "Expected arrival",
-                    value: option.expectedArrival,
-                    systemImage: "clock"
-                )
+                    Divider()
 
-                MetricColumn(
-                    title: "Total journey delay",
-                    value: journeyDelayText(for: option),
-                    systemImage: journeyImpactIcon(for: option)
-                )
+                    impactSummary(option)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                VStack(alignment: .leading, spacing: AppSpacing.large) {
+                    journeyFlow(option)
+
+                    Divider()
+
+                    impactSummary(option)
+                }
             }
 
             Divider()
 
-            Label(
-                journeyImpactMessage(for: option),
-                systemImage: journeyImpactIcon(for: option)
+            HStack(alignment: .top, spacing: AppSpacing.medium) {
+                Image(systemName: journeyImpactIcon(for: option))
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(journeyImpactColour(for: option))
+                    .frame(width: 28)
+
+                Text(journeyImpactMessage(for: option))
+                    .font(AppTypography.cardTitle)
+                    .foregroundStyle(journeyImpactColour(for: option))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+            }
+            .padding(AppSpacing.medium)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(journeyImpactColour(for: option).opacity(0.08))
+            .clipShape(
+                RoundedRectangle(cornerRadius: AppCornerRadius.large)
             )
-            .font(AppTypography.supporting)
-            .foregroundStyle(journeyImpactColour(for: option))
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityElement(children: .combine)
         }
         .appCard(background: impactSurface(for: option))
     }
 
-    // MARK: - Affected Segments
+    // MARK: - Journey Flow
 
     @ViewBuilder
-    private func affectedSegments(_ option: JourneyOption) -> some View {
-        if option.hasDisruption {
-            JourneyTimeline(
-                title: "Affected Segments",
-                segments: disruptedSegments(in: option)
-                    .map(segmentPresentation)
+    private func journeyFlow(_ option: JourneyOption) -> some View {
+        let segments = option.orderedSegments
+
+        VStack(alignment: .leading, spacing: 0) {
+            if let first = segments.first {
+                impactStopRow(
+                    time: first.departureText,
+                    stopName: first.origin,
+                    nodeStyle: .start
+                )
+
+                ForEach(Array(segments.enumerated()), id: \.element.id) { index, segment in
+                    impactSegmentRow(segment)
+
+                    impactStopRow(
+                        time: segment.arrivalText,
+                        stopName: segment.destination,
+                        nodeStyle: index == segments.count - 1 ? .end : .transfer
+                    )
+
+                    if index < segments.count - 1 {
+                        let next = segments[index + 1]
+                        impactTransferRow(
+                            from: segment,
+                            to: next
+                        )
+                    }
+                }
+            } else {
+                HStack(spacing: AppSpacing.medium) {
+                    Image(systemName: "location.fill")
+                        .foregroundStyle(AppColor.success)
+
+                    Text(option.origin)
+                        .font(AppTypography.cardTitle)
+                        .foregroundStyle(AppColor.ink)
+
+                    Image(systemName: "arrow.right")
+                        .foregroundStyle(AppColor.accent)
+
+                    Text(option.destination)
+                        .font(AppTypography.cardTitle)
+                        .foregroundStyle(AppColor.ink)
+                }
+            }
+        }
+    }
+
+    private enum ImpactStopNodeStyle {
+        case start
+        case transfer
+        case end
+    }
+
+    private func impactStopRow(
+        time: String,
+        stopName: String,
+        nodeStyle: ImpactStopNodeStyle
+    ) -> some View {
+        HStack(alignment: .center, spacing: AppSpacing.medium) {
+            Text(time)
+                .font(.headline.monospacedDigit())
+                .foregroundStyle(AppColor.ink)
+                .frame(width: 58, alignment: .leading)
+
+            Circle()
+                .fill(stopNodeColour(nodeStyle))
+                .frame(width: nodeStyle == .transfer ? 13 : 16,
+                       height: nodeStyle == .transfer ? 13 : 16)
+                .overlay {
+                    if nodeStyle == .transfer {
+                        Circle()
+                            .stroke(AppColor.ink, lineWidth: 2)
+                    }
+                }
+                .frame(width: 24)
+
+            Text(stopName)
+                .font(AppTypography.cardTitle)
+                .foregroundStyle(AppColor.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func impactSegmentRow(
+        _ segment: JourneySegment
+    ) -> some View {
+        HStack(alignment: .center, spacing: AppSpacing.medium) {
+            Color.clear
+                .frame(width: 58, height: 1)
+
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(transportColour(for: segment))
+                    .frame(width: 4, height: 18)
+
+                Image(systemName: segment.transportIcon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(transportColour(for: segment))
+                    .clipShape(Circle())
+
+                Rectangle()
+                    .fill(transportColour(for: segment))
+                    .frame(width: 4, height: 18)
+            }
+            .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: AppSpacing.extraSmall) {
+                Text(segment.routeDisplayText)
+                    .font(AppTypography.cardTitle)
+                    .foregroundStyle(transportColour(for: segment))
+                    .padding(.horizontal, AppSpacing.small)
+                    .padding(.vertical, 4)
+                    .background(
+                        transportColour(for: segment).opacity(0.10)
+                    )
+                    .clipShape(Capsule())
+
+                Text("\(segment.durationMinutes) min")
+                    .font(AppTypography.metadata)
+                    .foregroundStyle(AppColor.ink)
+
+                if segment.isCancelled {
+                    Text("Cancelled")
+                        .font(AppTypography.metadata)
+                        .foregroundStyle(AppColor.critical)
+                } else if segment.delayMinutes > 0 {
+                    Text("+\(segment.delayMinutes) min delay")
+                        .font(AppTypography.metadata)
+                        .foregroundStyle(AppColor.warning)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func impactTransferRow(
+        from current: JourneySegment,
+        to next: JourneySegment
+    ) -> some View {
+        let transferMinutes = transferMinutes(
+            from: current,
+            to: next
+        )
+
+        return HStack(alignment: .center, spacing: AppSpacing.medium) {
+            Color.clear
+                .frame(width: 58, height: 1)
+
+            VStack(spacing: 2) {
+                ForEach(0..<3, id: \.self) { _ in
+                    Circle()
+                        .fill(AppColor.accent)
+                        .frame(width: 4, height: 4)
+                }
+            }
+            .frame(width: 24)
+
+            HStack(spacing: AppSpacing.small) {
+                Image(systemName: "arrow.triangle.swap")
+                    .foregroundStyle(AppColor.accent)
+
+                Text(
+                    transferMinutes > 0
+                    ? "Transfer · \(transferMinutes) min"
+                    : "Transfer"
+                )
+                .font(AppTypography.metadata)
+                .foregroundStyle(AppColor.ink)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, AppSpacing.extraSmall)
+    }
+
+    // MARK: - Impact Summary
+
+    private func impactSummary(
+        _ option: JourneyOption
+    ) -> some View {
+        VStack(alignment: .leading, spacing: AppSpacing.large) {
+            impactMetric(
+                title: "Scheduled arrival",
+                value: scheduledArrivalText(for: option),
+                systemImage: "calendar",
+                colour: AppColor.success
             )
-        } else {
-            InformationNotice(
-                title: "No Affected Segments",
-                message: "Every segment in the current journey is reporting normal service.",
-                status: .normal("All segments normal")
+
+            impactMetric(
+                title: "Expected arrival",
+                value: option.expectedArrival,
+                systemImage: "clock",
+                colour: AppColor.success
+            )
+
+            impactMetric(
+                title: "Total delay",
+                value: journeyDelayText(for: option),
+                systemImage: journeyImpactIcon(for: option),
+                colour: journeyImpactColour(for: option)
+            )
+
+            impactMetric(
+                title: "Transfers",
+                value: "\(option.transfers)",
+                systemImage: "arrow.left.arrow.right",
+                colour: AppColor.accent
             )
         }
     }
 
-    // MARK: - Complete Journey Context
+    private func impactMetric(
+        title: String,
+        value: String,
+        systemImage: String,
+        colour: Color
+    ) -> some View {
+        HStack(alignment: .top, spacing: AppSpacing.medium) {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(colour)
+                .frame(width: 30)
 
-    @ViewBuilder
-    private func completeJourney(_ option: JourneyOption) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.large) {
-            SectionHeader(
-                title: "Full Journey Context",
-                subtitle: "All legs from \(option.origin) to \(option.destination), including unaffected connections.",
-                systemImage: "point.topleft.down.to.point.bottomright.curvepath"
-            )
-            .padding(AppSpacing.large)
-            .background(AppColor.aliceBlue)
-            .clipShape(
-                RoundedRectangle(cornerRadius: AppCornerRadius.large)
-            )
+            VStack(alignment: .leading, spacing: AppSpacing.extraSmall) {
+                Text(title)
+                    .font(AppTypography.supporting)
+                    .foregroundStyle(AppColor.ink)
 
-            JourneySummary(
-                title: "Your Current Journey",
-                systemImage: option.firstSegment?.transportIcon
-                    ?? "location.fill",
-                route: option.routeSummary,
-                origin: option.origin,
-                destination: option.destination,
-                metrics: [
-                    JourneyMetric(
-                        title: "Departure",
-                        value: scheduledDepartureText(for: option),
-                        systemImage: "arrow.up.right"
-                    ),
-                    JourneyMetric(
-                        title: "Expected arrival",
-                        value: option.expectedArrival,
-                        systemImage: "arrow.down.right"
-                    ),
-                    JourneyMetric(
-                        title: "Transfers",
-                        value: option.transferText,
-                        systemImage: "arrow.triangle.branch"
-                    ),
-                    JourneyMetric(
-                        title: "Journey time",
-                        value: "\(option.totalMinutes) min",
-                        systemImage: "clock"
-                    )
-                ],
-                status: journeyStatus(for: option)
-            )
+                Text(value)
+                    .font(.title2.bold())
+                    .foregroundStyle(colour)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            JourneyTimeline(
-                title: "Complete Journey",
-                segments: option.orderedSegments
-                    .map(segmentPresentation)
-            )
+            Spacer(minLength: 0)
+        }
+    }
+
+    // MARK: - Impact Helpers
+
+    private func transferMinutes(
+        from current: JourneySegment,
+        to next: JourneySegment
+    ) -> Int {
+        let arrival = minutesFromTimeString(current.arrivalText)
+        let departure = minutesFromTimeString(next.departureText)
+
+        guard arrival >= 0, departure >= 0 else {
+            return 0
+        }
+
+        return forwardMinuteDifference(
+            from: arrival,
+            to: departure
+        )
+    }
+
+    private func transportColour(
+        for segment: JourneySegment
+    ) -> Color {
+        switch segment.transportMode.lowercased() {
+        case "train":
+            return .purple
+        case "ferry":
+            return .cyan
+        case "walk", "walking":
+            return .orange
+        default:
+            return .blue
+        }
+    }
+
+    private func stopNodeColour(
+        _ style: ImpactStopNodeStyle
+    ) -> Color {
+        switch style {
+        case .start:
+            return AppColor.success
+        case .transfer:
+            return AppColor.surface
+        case .end:
+            return AppColor.success
         }
     }
 
@@ -210,16 +515,6 @@ struct DisruptionInformationView: View {
     }
 
     // MARK: - Presentation Mapping
-
-    private var impactColumns: [GridItem] {
-        [
-            GridItem(
-                .adaptive(minimum: 140),
-                spacing: AppSpacing.large,
-                alignment: .top
-            )
-        ]
-    }
 
     private func segmentPresentation(
         _ segment: JourneySegment
@@ -488,6 +783,17 @@ struct DisruptionInformationView: View {
 
     // MARK: - Time Helper
 
+    private func forwardMinuteDifference(
+        from start: Int,
+        to end: Int
+    ) -> Int {
+        if end >= start {
+            return end - start
+        }
+
+        return (1440 - start) + end
+    }
+
     private func minutesFromTimeString(
         _ time: String
     ) -> Int {
@@ -505,3 +811,5 @@ struct DisruptionInformationView: View {
         return hour * 60 + minute
     }
 }
+
+

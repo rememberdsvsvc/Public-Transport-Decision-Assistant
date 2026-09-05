@@ -45,11 +45,15 @@ Similar repeated journey patterns are grouped to avoid displaying too many nearl
 
 The passenger then selects the journey that best represents their intended current journey.
 
+A lightweight **Route Preview** is available for the selected option to provide spatial context for the journey without turning the prototype into a full navigation application.
+
 ### Page 2 — Disruption Information
 
 The system presents the passenger's complete journey and identifies which journey segment is affected by a disruption.
 
 The page also explains the overall journey impact by comparing the scheduled journey with the updated expected journey.
+
+A route map helps the passenger understand where the affected journey sits spatially and supports interpretation of the disruption.
 
 ### Page 3 — Decision Support
 
@@ -72,6 +76,8 @@ The passenger can select a decision priority:
 The displayed options are reordered according to the selected priority. The interface also explains why an option may be worth considering and, where relevant, presents its trade-offs.
 
 The original/current journey remains available as an option when it is still usable.
+
+When an option is selected, a lightweight route preview can be displayed to help the passenger understand the spatial differences between journey alternatives.
 
 The purpose of this page is to support the passenger's decision rather than make the decision automatically.
 
@@ -144,6 +150,7 @@ The prototype uses:
 
 - Swift
 - SwiftUI
+- MapKit
 - Xcode
 - SQLite
 - Supabase
@@ -169,7 +176,10 @@ transport-disruption-app
 │   ├── Journey.swift
 │   ├── JourneyOption.swift
 │   ├── JourneySegment.swift
-│   └── TransportService.swift
+│   ├── TransportService.swift
+│   └── Helpers
+│       ├── StopCoordinates.swift
+│       └── RouteWaypoints.swift
 │
 ├── Resources
 │   └── transport_simulation.db
@@ -186,7 +196,8 @@ transport-disruption-app
 │   ├── CurrentJourneyView.swift
 │   ├── DisruptionInformationView.swift
 │   ├── DecisionSupportView.swift
-│   └── EvaluationView.swift
+│   ├── EvaluationView.swift
+│   └── JourneyMapView.swift
 │
 ├── ContentView.swift
 └── transport_disruption_appApp.swift
@@ -257,5 +268,7 @@ Database access should remain restricted using Supabase Row Level Security polic
 This application is a research prototype.
 
 The public transport services, schedules, and disruption conditions used by the prototype are simulated for evaluation purposes and should not be treated as live operational transport information.
+
+Route previews provide simplified spatial visualisations for the research prototype and should not be interpreted as live or authoritative public transport navigation. Route geometry is used to support journey understanding and may approximate real-world service corridors.
 
 The prototype is intended to evaluate how disruption information and comparative decision support may influence passenger understanding and decision-making.

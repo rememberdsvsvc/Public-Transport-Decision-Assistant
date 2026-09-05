@@ -16,6 +16,9 @@ struct CurrentJourneyView: View {
     @State private var hasSearched = false
     @State private var goToDisruptionInformation = false
 
+    // Journey selected for preview/confirmation on Page 1
+    @State private var previewJourney: JourneyOption?
+
     init(journey: Binding<Journey>) {
         self._journey = journey
         _origin = State(initialValue: journey.wrappedValue.origin)
@@ -42,6 +45,17 @@ struct CurrentJourneyView: View {
 
                 if hasSearched {
                     searchResults
+
+                    if let previewJourney {
+                        PrimaryActionButton(
+                            title: "Confirm Current Journey",
+                            systemImage: "checkmark.circle.fill"
+                        ) {
+                            selectJourney(previewJourney)
+                        }
+                        .tint(AppColor.ink)
+                        .accentColor(AppColor.ink)
+                    }
                 }
             }
             .appPageWidth()
@@ -49,6 +63,11 @@ struct CurrentJourneyView: View {
         }
         .background(AppColor.pageBackground.ignoresSafeArea())
         .tint(AppColor.ink)
+        .safeAreaInset(edge: .bottom) {
+            if let previewJourney {
+                pageOneConfirmationBar(previewJourney)
+            }
+        }
         .onChange(of: origin) { _, newOrigin in
             updateDestination(for: newOrigin)
             resetSearch()
@@ -194,47 +213,116 @@ struct CurrentJourneyView: View {
 
     @ViewBuilder
     private func journeyResult(option: JourneyOption, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: AppSpacing.medium) {
-            JourneySummary(
-                title: "Journey \(index + 1): \(option.transportModeText)",
-                systemImage: mainTransportIcon(for: option),
-                route: option.routeSummary,
-                origin: option.origin,
-                destination: option.destination,
-                metrics: [
-                    JourneyMetric(
-                        title: "Departure",
-                        value: scheduledDepartureText(for: option),
-                        systemImage: "arrow.up.right"
-                    ),
-                    JourneyMetric(
-                        title: "Expected arrival",
-                        value: option.expectedArrival,
-                        systemImage: "arrow.down.right"
-                    ),
-                    JourneyMetric(
-                        title: "Duration",
-                        value: "\(option.totalMinutes) min",
-                        systemImage: "clock"
-                    ),
-                    JourneyMetric(
-                        title: "Transfers",
-                        value: option.transferText,
-                        systemImage: "arrow.triangle.branch"
-                    )
-                ],
-                status: presentationStatus(for: option)
-            )
+        let isSelected = previewJourney?.id == option.id
 
-            if option.orderedSegments.count > 1 {
-                JourneyTimeline(
-                    title: "Journey details",
-                    segments: option.orderedSegments.map(segmentPresentation)
+        Button {
+            previewJourney = option
+        } label: {
+            VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                JourneySummary(
+                    title: "Journey \(index + 1): \(option.transportModeText)",
+                    systemImage: mainTransportIcon(for: option),
+                    route: option.routeSummary,
+                    origin: option.origin,
+                    destination: option.destination,
+                    metrics: [
+                        JourneyMetric(
+                            title: "Departure",
+                            value: scheduledDepartureText(for: option),
+                            systemImage: "arrow.up.right"
+                        ),
+                        JourneyMetric(
+                            title: "Expected arrival",
+                            value: option.expectedArrival,
+                            systemImage: "arrow.down.right"
+                        ),
+                        JourneyMetric(
+                            title: "Duration",
+                            value: "\(option.totalMinutes) min",
+                            systemImage: "clock"
+                        ),
+                        JourneyMetric(
+                            title: "Transfers",
+                            value: option.transferText,
+                            systemImage: "arrow.triangle.branch"
+                        )
+                    ],
+                    status: presentationStatus(for: option)
                 )
+
+                if option.orderedSegments.count > 1 {
+                    JourneyTimeline(
+                        title: "Journey details",
+                        segments: option.orderedSegments.map(segmentPresentation)
+                    )
+                }
+
+                if isSelected {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                        Label(
+                            "Route Preview",
+                            systemImage: "map.fill"
+                        )
+                        .font(AppTypography.cardTitle)
+                        .foregroundStyle(AppColor.accent)
+
+                        JourneyMapView(
+                            option: option
+                        )
+
+                        Label(
+                            "Selected for confirmation",
+                            systemImage: "checkmark.circle.fill"
+                        )
+                        .font(AppTypography.metadata)
+                        .foregroundStyle(AppColor.accent)
+                    }
+                }
+            }
+            .appCard(
+                background: isSelected
+                    ? AppColor.accent.opacity(0.08)
+                    : AppColor.surface,
+                showsBorder: true
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: AppCornerRadius.large)
+                    .stroke(
+                        isSelected ? AppColor.accent : Color.clear,
+                        lineWidth: 2
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Journey option \(index + 1)")
+        .accessibilityHint(
+            isSelected
+            ? "Selected. Confirm this journey using the button below."
+            : "Double tap to select and preview this journey."
+        )
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    // MARK: - Sticky Confirmation Bar
+
+    private func pageOneConfirmationBar(_ option: JourneyOption) -> some View {
+        VStack(spacing: AppSpacing.small) {
+            HStack(spacing: AppSpacing.small) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(AppColor.accent)
+
+                Text("Selected: \(option.routeSummary)")
+                    .font(AppTypography.metadata)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
             }
 
             PrimaryActionButton(
-                title: "This Is My Current Journey",
+                title: "Confirm Current Journey",
                 systemImage: "checkmark.circle.fill"
             ) {
                 selectJourney(option)
@@ -242,8 +330,13 @@ struct CurrentJourneyView: View {
             .tint(AppColor.ink)
             .accentColor(AppColor.ink)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Journey option \(index + 1)")
+        .padding(.horizontal, AppSpacing.large)
+        .padding(.top, AppSpacing.medium)
+        .padding(.bottom, AppSpacing.small)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+        }
     }
 
     private var availableOrigins: [String] {
@@ -273,6 +366,7 @@ struct CurrentJourneyView: View {
             selectedTime: selectedTime
         )
 
+        previewJourney = nil
         hasSearched = true
     }
 
@@ -360,6 +454,7 @@ struct CurrentJourneyView: View {
 
     private func resetSearch() {
         currentJourneys = []
+        previewJourney = nil
         hasSearched = false
     }
 }
@@ -383,3 +478,5 @@ private struct CurrentJourneyPreview: View {
         .preferredColorScheme(.dark)
         .environment(\.dynamicTypeSize, .accessibility1)
 }
+
+

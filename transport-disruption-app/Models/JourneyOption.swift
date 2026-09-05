@@ -265,6 +265,30 @@ struct JourneyOption: Identifiable, Hashable {
     }
 
 
+    // MARK: - Map Stops
+
+    var mapStopNames: [String] {
+
+        let ordered = orderedSegments
+
+        guard let firstSegment = ordered.first else {
+            return [origin, destination]
+        }
+
+        var stops: [String] = [
+            firstSegment.origin
+        ]
+
+        for segment in ordered {
+            if stops.last != segment.destination {
+                stops.append(segment.destination)
+            }
+        }
+
+        return stops
+    }
+
+
     // MARK: - Journey Description
 
     var journeyDescription: String {
@@ -281,4 +305,5 @@ struct JourneyOption: Identifiable, Hashable {
         """
     }
 }
+
 

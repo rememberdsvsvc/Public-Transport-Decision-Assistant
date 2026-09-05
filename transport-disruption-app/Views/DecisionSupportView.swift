@@ -59,6 +59,9 @@ struct DecisionSupportView: View {
     @State private var selectedPriority: DecisionPriority = .arriveSooner
     @State private var showPrioritySheet = false
 
+    // Only one option's detailed itinerary is expanded at a time.
+    @State private var expandedJourneyOptionID: Int?
+
     private let metricColumns = [
         GridItem(
             .adaptive(minimum: 128),
@@ -85,19 +88,17 @@ struct DecisionSupportView: View {
 
                 if let selectedOption = journey.selectedOption {
                     selectionSummary(selectedOption)
-
-                    PrimaryActionButton(
-                        title: "Confirm My Choice",
-                        systemImage: "checkmark.circle.fill"
-                    ) {
-                        goToEvaluation = true
-                    }
                 }
             }
             .appPageWidth()
             .padding(.vertical, AppSpacing.extraLarge)
         }
         .background(AppColor.pageBackground.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom) {
+            if let selectedOption = journey.selectedOption {
+                pageThreeConfirmationBar(selectedOption)
+            }
+        }
         .navigationDestination(isPresented: $goToEvaluation) {
             EvaluationView(journey: $journey)
         }
@@ -348,6 +349,27 @@ struct DecisionSupportView: View {
 
                 delayRiskPanel(for: option)
 
+                if isSelected {
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: AppSpacing.medium) {
+                        Label(
+                            "Route Map",
+                            systemImage: "map.fill"
+                        )
+                        .font(AppTypography.cardTitle)
+                        .foregroundStyle(AppColor.accent)
+
+                        Text("Showing the route you selected.")
+                            .font(AppTypography.supporting)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        JourneyMapView(
+                            option: option
+                        )
+                    }
+                }
+
                 if let currentJourney = journey.selectedJourney {
                     Divider()
 
@@ -364,7 +386,45 @@ struct DecisionSupportView: View {
 
                 if option.orderedSegments.count > 1 {
                     Divider()
-                    journeySegments(option.orderedSegments)
+
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            expandedJourneyOptionID =
+                                expandedJourneyOptionID == option.id
+                                ? nil
+                                : option.id
+                        }
+                    } label: {
+                        HStack(spacing: AppSpacing.small) {
+                            Image(
+                                systemName:
+                                    expandedJourneyOptionID == option.id
+                                    ? "chevron.down"
+                                    : "chevron.right"
+                            )
+                            .font(.caption.bold())
+                            .foregroundStyle(AppColor.accent)
+
+                            Text(
+                                expandedJourneyOptionID == option.id
+                                ? "Hide journey details"
+                                : "View journey details"
+                            )
+                            .font(AppTypography.cardTitle)
+                            .foregroundStyle(AppColor.ink)
+
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    if expandedJourneyOptionID == option.id {
+                        journeySegments(option.orderedSegments)
+                            .transition(
+                                .opacity.combined(with: .move(edge: .top))
+                            )
+                    }
                 }
             }
             .appCard(
@@ -638,6 +698,43 @@ struct DecisionSupportView: View {
         }
     }
 
+    // MARK: - Sticky Confirmation Bar
+
+    private func pageThreeConfirmationBar(_ option: JourneyOption) -> some View {
+        VStack(spacing: AppSpacing.small) {
+            HStack(spacing: AppSpacing.small) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(AppColor.accent)
+
+                Text(
+                    journey.isCurrentJourney(option)
+                    ? "Selected: Stay with \(option.routeSummary)"
+                    : "Selected: \(option.routeSummary)"
+                )
+                .font(AppTypography.metadata)
+                .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+
+            PrimaryActionButton(
+                title: "Confirm My Choice",
+                systemImage: "checkmark.circle.fill"
+            ) {
+                goToEvaluation = true
+            }
+            .tint(AppColor.ink)
+            .accentColor(AppColor.ink)
+        }
+        .padding(.horizontal, AppSpacing.large)
+        .padding(.top, AppSpacing.medium)
+        .padding(.bottom, AppSpacing.small)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Divider()
+        }
+    }
+
     private func selectionSummary(_ option: JourneyOption) -> some View {
         let title =
             journey.isCurrentJourney(option)
@@ -698,7 +795,7 @@ struct DecisionSupportView: View {
             ),
             JourneyMetric(
                 title: "Transfers",
-                value: option.transferText,
+                value: "\(option.transfers)",
                 systemImage: "arrow.triangle.branch"
             ),
             JourneyMetric(
@@ -1412,4 +1509,6 @@ private extension String {
         return first.uppercased() + dropFirst()
     }
 }
+
+
 
