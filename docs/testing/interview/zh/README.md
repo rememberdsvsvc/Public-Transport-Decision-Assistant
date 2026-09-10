@@ -3,6 +3,7 @@
 本文件夹保存 Q1、Q3、Q4 的参与者访谈和可用性测试材料，不能用它来证明模拟中断数据的技术正确性。
 
 - [可用性测试计划](usability-test-plan.md)
+- [两位参与者访谈执行手册](two-participant-session-runbook.md)
 - [主持人脚本](moderator-script.md)
 - [参与者任务单](participant-task-sheet.md)
 - [会话记录模板](test-session-template.md)
