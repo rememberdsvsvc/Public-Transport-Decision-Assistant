@@ -1,0 +1,17 @@
+﻿Participant_ID,Public_Transport_Use_Frequency,Task_Start_Completed,Task_Understand_Disruption,Task_Identify_Impact,Task_Judge_Action,Task_Compare_Options,Task_Select_Action,Max_Assistance_Level,Overall_Task_Outcome,Final_Action_Viable,Completion_Time,Rating_Disruption_Clarity,Rating_Compare_Options,Rating_Next_Step_Clarity,Rating_Decision_Confidence_Info,Decision_Confidence,Useful_Early_Service,Useful_Delayed_Service,Useful_Cancelled_Changed,Useful_On_Time,Useful_Other,PU1,PU2,PU3,PU4,PEOU1,PEOU2,PEOU3,PEOU4,Confidence,PU_Mean,PEOU_Mean
+P01,Moderate,Yes,Yes,Yes,Yes,Yes,Yes,1,unaided,Viable,120,5,4,5,5,4,No,Yes,Yes,No,Yes,5,5,5,5,4,4,4,4,5,5,4
+P02,Moderate,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,180,4,4,5,5,4,No,Yes,Yes,No,Yes,5,5,5,5,4,4,4,4,5,5,4
+P03,Moderate,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,120,5,4,5,5,5,No,Yes,Yes,No,No,5,5,5,5,5,5,4,5,5,5,4.75
+P04,Moderate,Yes,Partial,No,No,Partial,Yes,1,unaided,Viable,180,3,4,4,3,4,No,No,No,Yes,No,2,2,2,2,4,3,2,3,3,2,3
+P05,High,Yes,No,No,No,Partial,Yes,1,unaided,Viable,180,3,4,3,4,3,No,No,No,Yes,No,2,2,2,3,4,3,2,3,3,2.25,3
+P06,Moderate,Yes,Partial,Yes,Yes,Partial,Partial,1,unaided,Viable,120,2,4,4,4,4,No,No,No,Yes,No,3,2,3,3,4,4,4,4,4,2.75,4
+P07,High,Yes,Yes,Yes,Yes,Yes,Yes,1,unaided,Viable,180,4,4,5,3,3,Yes,Yes,Yes,Yes,No,4,4,4,3,2,3,4,3,3,3.75,3
+P08,Moderate,Yes,Yes,Yes,Yes,Yes,Yes,1,unaided,Viable,120,4,3,3,4,4,No,Yes,Yes,No,No,4,4,4,3,5,4,3,4,4,3.75,3
+P09,High,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,120,5,4,5,2,4,Yes,Yes,Yes,Yes,No,4,5,5,4,5,5,5,5,3,4.5,5
+P10,High,Yes,Yes,Yes,Yes,Yes,Yes,1,unaided,Viable,240,4,3,4,4,5,Yes,Yes,Yes,No,Yes,5,5,5,4,4,5,5,5,4,4.75,4.75
+P11,High,Yes,Yes,Yes,Yes,Yes,Yes,1,unaided,Viable,240,5,4,4,5,4,No,Yes,No,No,No,5,5,5,4,4,5,4,5,5,4.75,4.5
+P12,High,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,300,5,4,5,5,4,No,No,Yes,No,No,5,4,5,5,5,5,5,5,4,4.75,5
+P13,High,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,300,5,5,4,5,5,No,No,No,No,No,4,5,5,5,5,5,5,4,4,4.75,4.75
+P14,High,Yes,Yes,Yes,Yes,Yes,Yes,2,assisted,Viable,180,5,4,4,5,5,Yes,Yes,Yes,No,No,4,4,4,4,4,4,4,4,4,4,4
+P15,Moderate,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,300,5,5,5,3,3,No,No,Yes,No,No,4,4,3,4,4,4,4,4,3,3.75,4
+P16,High,Yes,Yes,Yes,Yes,Yes,Yes,0,unaided,Viable,360,4,5,3,3,5,No,Yes,No,Yes,No,3,5,5,3,5,5,5,5,3,4,5
